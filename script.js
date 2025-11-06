@@ -239,6 +239,8 @@ function showCharacterSheet(characterId) {
 
   if (!elements.statsPanel || elements.statsPanel.length === 0) return;
 
+  if (!elements.statsPanel || elements.statsPanel.length === 0) return;
+
   elements.statsPanel.forEach((statElement) => {
     const statKey = statElement.dataset.stat;
     const stat = character.stats[statKey];
