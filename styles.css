@@ -65,7 +65,7 @@ body {
 
 .select-header h1 {
   margin: 0 0 1.25rem;
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 1.6rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -125,7 +125,7 @@ body {
 
 .character-meta h2 {
   margin: 0;
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 1.1rem;
   letter-spacing: 0.04em;
   color: var(--color-gold-bright);
@@ -255,7 +255,7 @@ body {
 
 .hero-name {
   margin: 0;
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Cinzel', serif;
   font-size: clamp(1.8rem, 6vw, 2.4rem);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -303,7 +303,7 @@ body {
 }
 
 .stat-label {
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0.16em;
   color: var(--color-gold);
   font-size: 0.78rem;
@@ -337,7 +337,7 @@ body {
 
 .section-header h3 {
   margin: 0;
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-gold);
@@ -365,7 +365,7 @@ body {
 
 .ability-card h4 {
   margin: 0;
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0.08em;
   font-size: 0.9rem;
   color: var(--color-gold-bright);
