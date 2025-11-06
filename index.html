@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CharSheet Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2Pk8vU1us1r28M4P5AN2RFxjv0v9Uqk0hN6D+JQ9v6TztS3xY+4GkW3jw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <div class="character-select" data-screen="select">
+      <header class="select-header">
+        <h1>Selecciona tu Personaje</h1>
+        <button class="btn create-btn" id="createCharacterBtn">
+          <i class="fa-solid fa-plus"></i>
+          Crear Personaje
+        </button>
+      </header>
+      <section class="character-list" id="characterList">
+        <!-- Character cards inserted by JS -->
+      </section>
+      <footer class="select-footer">
+        <button class="btn secondary" id="editCharacterBtn">
+          <i class="fa-solid fa-pen"></i>
+          Editar Seleccionado
+        </button>
+        <button class="btn secondary" id="deleteCharacterBtn">
+          <i class="fa-solid fa-trash"></i>
+          Borrar Seleccionado
+        </button>
+      </footer>
+    </div>
+
+    <div class="character-sheet hidden" data-screen="sheet">
+      <button class="btn back-btn" id="backToSelect">
+        <i class="fa-solid fa-chevron-left"></i>
+        Volver
+      </button>
+      <section class="hero-card">
+        <div class="hero-background"></div>
+        <img src="https://images.unsplash.com/photo-1546483875-ad9014c88eba?auto=format&fit=crop&w=640&q=80" alt="Retrato del personaje" class="hero-portrait" />
+        <div class="hero-overlay"></div>
+        <div class="hero-info">
+          <h2 id="heroName" class="hero-name">Nombre del PJ</h2>
+          <p id="heroDetails" class="hero-details">Humano &bull; Bardo &bull; Nivel 3</p>
+        </div>
+      </section>
+
+      <section class="stats-panel">
+        <div class="stat" data-stat="fuerza">
+          <span class="stat-icon"><i class="fa-solid fa-hand-fist"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">FUE</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+        <div class="stat" data-stat="agilidad">
+          <span class="stat-icon"><i class="fa-solid fa-shoe-prints"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">AGI</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+        <div class="stat" data-stat="inteligencia">
+          <span class="stat-icon"><i class="fa-solid fa-brain"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">INT</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+        <div class="stat" data-stat="carisma">
+          <span class="stat-icon"><i class="fa-solid fa-comments"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">CAR</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+        <div class="stat" data-stat="ataque">
+          <span class="stat-icon"><i class="fa-solid fa-crosshairs"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">ATQ</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+        <div class="stat" data-stat="danio">
+          <span class="stat-icon"><i class="fa-solid fa-burst"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">DAÑO</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+        <div class="stat" data-stat="movimiento">
+          <span class="stat-icon"><i class="fa-solid fa-person-running"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">MOV</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+        <div class="stat" data-stat="vida">
+          <span class="stat-icon"><i class="fa-solid fa-heart"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">VIDA</span>
+            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="abilities-section">
+        <header class="section-header">
+          <h3>Habilidades Activas</h3>
+        </header>
+        <div class="abilities-grid" id="activeAbilities">
+          <!-- Abilities inserted by JS -->
+        </div>
+      </section>
+
+      <nav class="bottom-nav">
+        <button class="nav-item active" data-view="sheet">
+          <i class="fa-solid fa-id-card"></i>
+          <span>Hoja</span>
+        </button>
+        <button class="nav-item" data-view="abilities">
+          <i class="fa-solid fa-fire"></i>
+          <span>Habilidades</span>
+        </button>
+        <button class="nav-item" data-view="inventory">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <span>Inventario</span>
+        </button>
+        <button class="nav-item" data-view="notes">
+          <i class="fa-solid fa-book"></i>
+          <span>Notas</span>
+        </button>
+        <button class="nav-item" data-view="edit">
+          <i class="fa-solid fa-feather"></i>
+          <span>Editar</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
