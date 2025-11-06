@@ -2,7 +2,7 @@ const characters = [
   {
     id: 'elanor-vex',
     name: 'Elanor Vex',
-    portrait: 'https://images.unsplash.com/photo-1604079628040-94301bb21b17?auto=format&fit=crop&w=640&q=80',
+    portrait: 'assets/elanor-vex.svg',
     ancestry: 'Humana',
     clazz: 'Barda',
     level: 3,
@@ -84,7 +84,7 @@ const characters = [
   {
     id: 'tavian-kors',
     name: 'Tavian Kors',
-    portrait: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&q=80',
+    portrait: 'assets/tavian-kors.svg',
     ancestry: 'Mediano',
     clazz: 'Pícaro',
     level: 5,
@@ -137,11 +137,15 @@ const characters = [
 
 const elements = {};
 
+function withVersion(path) {
+  if (!window.APP_VERSION) return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}v=${window.APP_VERSION}`;
+}
+
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
-  elements.editCharacterBtn = document.getElementById('editCharacterBtn');
-  elements.deleteCharacterBtn = document.getElementById('deleteCharacterBtn');
   elements.backToSelect = document.getElementById('backToSelect');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
@@ -160,11 +164,12 @@ function renderCharacterList() {
   const fragment = document.createDocumentFragment();
 
   characters.forEach((character) => {
+    const portraitSrc = withVersion(character.portrait);
     const card = document.createElement('article');
     card.className = `character-card${character.id === selectedCharacterId ? ' active' : ''}`;
     card.dataset.id = character.id;
     card.innerHTML = `
-      <img src="${character.portrait}" alt="Retrato de ${character.name}" loading="lazy" />
+      <img src="${portraitSrc}" alt="Retrato de ${character.name}" loading="lazy" />
       <div class="character-meta">
         <h2>${character.name}</h2>
         <p>${character.ancestry} ${character.clazz} &bull; Nivel ${character.level}</p>
@@ -172,6 +177,14 @@ function renderCharacterList() {
           <span class="tag">${character.campaign}</span>
           <span class="tag">${character.tagline}</span>
         </div>
+      </div>
+      <div class="card-actions">
+        <button class="icon-button edit" type="button" title="Editar ${character.name}" aria-label="Editar ${character.name}">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button class="icon-button delete" type="button" title="Eliminar ${character.name}" aria-label="Eliminar ${character.name}">
+          <i class="fa-solid fa-trash"></i>
+        </button>
       </div>
     `;
 
@@ -181,11 +194,36 @@ function renderCharacterList() {
       showCharacterSheet(character.id);
     });
 
+    const editButton = card.querySelector('.icon-button.edit');
+    const deleteButton = card.querySelector('.icon-button.delete');
+
+    if (editButton) {
+      editButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        handleEditCharacter(character);
+      });
+    }
+
+    if (deleteButton) {
+      deleteButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        handleDeleteCharacter(character);
+      });
+    }
+
     fragment.appendChild(card);
   });
 
   elements.characterList.innerHTML = '';
   elements.characterList.appendChild(fragment);
+}
+
+function handleEditCharacter(character) {
+  alert(`Las herramientas de edición para ${character.name} estarán disponibles cuando la app se sincronice con el Master.`);
+}
+
+function handleDeleteCharacter(character) {
+  alert(`Pronto podrás eliminar a ${character.name} directamente desde esta pantalla.`);
 }
 
 function showCharacterSheet(characterId) {
@@ -196,7 +234,10 @@ function showCharacterSheet(characterId) {
 
   elements.heroName.textContent = character.name;
   elements.heroDetails.innerHTML = `${character.ancestry} &bull; ${character.clazz} &bull; Nivel ${character.level}`;
-  elements.heroPortrait.src = character.portrait;
+  elements.heroPortrait.src = withVersion(character.portrait);
+  elements.heroPortrait.alt = `Retrato de ${character.name}`;
+
+  if (!elements.statsPanel || elements.statsPanel.length === 0) return;
 
   if (!elements.statsPanel || elements.statsPanel.length === 0) return;
 
@@ -284,18 +325,6 @@ function wireInteractions() {
   if (elements.createCharacterBtn) {
     elements.createCharacterBtn.addEventListener('click', () => {
       alert('En una próxima versión podrás crear nuevos personajes desde aquí.');
-    });
-  }
-
-  if (elements.editCharacterBtn) {
-    elements.editCharacterBtn.addEventListener('click', () => {
-      alert('Las herramientas de edición estarán disponibles cuando la app se sincronice con el Master.');
-    });
-  }
-
-  if (elements.deleteCharacterBtn) {
-    elements.deleteCharacterBtn.addEventListener('click', () => {
-      alert('Pronto podrás gestionar y eliminar personajes desde la app.');
     });
   }
 }
