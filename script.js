@@ -2,7 +2,7 @@ const characters = [
   {
     id: 'elanor-vex',
     name: 'Elanor Vex',
-    portrait: 'https://images.unsplash.com/photo-1604079628040-94301bb21b17?auto=format&fit=crop&w=640&q=80',
+    portrait: 'assets/elanor-vex.svg',
     ancestry: 'Humana',
     clazz: 'Barda',
     level: 3,
@@ -84,7 +84,7 @@ const characters = [
   {
     id: 'tavian-kors',
     name: 'Tavian Kors',
-    portrait: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&q=80',
+    portrait: 'assets/tavian-kors.svg',
     ancestry: 'Mediano',
     clazz: 'Pícaro',
     level: 5,
@@ -135,32 +135,41 @@ const characters = [
   }
 ];
 
-const elements = {
-  characterList: document.getElementById('characterList'),
-  createCharacterBtn: document.getElementById('createCharacterBtn'),
-  editCharacterBtn: document.getElementById('editCharacterBtn'),
-  deleteCharacterBtn: document.getElementById('deleteCharacterBtn'),
-  backToSelect: document.getElementById('backToSelect'),
-  heroName: document.getElementById('heroName'),
-  heroDetails: document.getElementById('heroDetails'),
-  heroPortrait: document.querySelector('.hero-portrait'),
-  statsPanel: document.querySelectorAll('.stat'),
-  activeAbilities: document.getElementById('activeAbilities'),
-  screenSelect: document.querySelector('[data-screen="select"]'),
-  screenSheet: document.querySelector('[data-screen="sheet"]')
-};
+const elements = {};
+
+function withVersion(path) {
+  if (!window.APP_VERSION) return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}v=${window.APP_VERSION}`;
+}
+
+function cacheElements() {
+  elements.characterList = document.getElementById('characterList');
+  elements.createCharacterBtn = document.getElementById('createCharacterBtn');
+  elements.backToSelect = document.getElementById('backToSelect');
+  elements.heroName = document.getElementById('heroName');
+  elements.heroDetails = document.getElementById('heroDetails');
+  elements.heroPortrait = document.querySelector('.hero-portrait');
+  elements.statsPanel = document.querySelectorAll('.stat');
+  elements.activeAbilities = document.getElementById('activeAbilities');
+  elements.screenSelect = document.querySelector('[data-screen="select"]');
+  elements.screenSheet = document.querySelector('[data-screen="sheet"]');
+}
 
 let selectedCharacterId = characters[0]?.id ?? null;
 
 function renderCharacterList() {
+  if (!elements.characterList) return;
+
   const fragment = document.createDocumentFragment();
 
   characters.forEach((character) => {
+    const portraitSrc = withVersion(character.portrait);
     const card = document.createElement('article');
     card.className = `character-card${character.id === selectedCharacterId ? ' active' : ''}`;
     card.dataset.id = character.id;
     card.innerHTML = `
-      <img src="${character.portrait}" alt="Retrato de ${character.name}" loading="lazy" />
+      <img src="${portraitSrc}" alt="Retrato de ${character.name}" loading="lazy" />
       <div class="character-meta">
         <h2>${character.name}</h2>
         <p>${character.ancestry} ${character.clazz} &bull; Nivel ${character.level}</p>
@@ -168,6 +177,14 @@ function renderCharacterList() {
           <span class="tag">${character.campaign}</span>
           <span class="tag">${character.tagline}</span>
         </div>
+      </div>
+      <div class="card-actions">
+        <button class="icon-button edit" type="button" title="Editar ${character.name}" aria-label="Editar ${character.name}">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button class="icon-button delete" type="button" title="Eliminar ${character.name}" aria-label="Eliminar ${character.name}">
+          <i class="fa-solid fa-trash"></i>
+        </button>
       </div>
     `;
 
@@ -177,6 +194,23 @@ function renderCharacterList() {
       showCharacterSheet(character.id);
     });
 
+    const editButton = card.querySelector('.icon-button.edit');
+    const deleteButton = card.querySelector('.icon-button.delete');
+
+    if (editButton) {
+      editButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        handleEditCharacter(character);
+      });
+    }
+
+    if (deleteButton) {
+      deleteButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        handleDeleteCharacter(character);
+      });
+    }
+
     fragment.appendChild(card);
   });
 
@@ -184,13 +218,26 @@ function renderCharacterList() {
   elements.characterList.appendChild(fragment);
 }
 
+function handleEditCharacter(character) {
+  alert(`Las herramientas de edición para ${character.name} estarán disponibles cuando la app se sincronice con el Master.`);
+}
+
+function handleDeleteCharacter(character) {
+  alert(`Pronto podrás eliminar a ${character.name} directamente desde esta pantalla.`);
+}
+
 function showCharacterSheet(characterId) {
   const character = characters.find((c) => c.id === characterId);
-  if (!character) return;
+  if (!character || !elements.heroName || !elements.heroDetails || !elements.heroPortrait) {
+    return;
+  }
 
   elements.heroName.textContent = character.name;
   elements.heroDetails.innerHTML = `${character.ancestry} &bull; ${character.clazz} &bull; Nivel ${character.level}`;
-  elements.heroPortrait.src = character.portrait;
+  elements.heroPortrait.src = withVersion(character.portrait);
+  elements.heroPortrait.alt = `Retrato de ${character.name}`;
+
+  if (!elements.statsPanel || elements.statsPanel.length === 0) return;
 
   elements.statsPanel.forEach((statElement) => {
     const statKey = statElement.dataset.stat;
@@ -211,11 +258,16 @@ function showCharacterSheet(characterId) {
   });
 
   renderAbilities(character.abilities);
-  elements.screenSelect.classList.add('hidden');
-  elements.screenSheet.classList.remove('hidden');
+
+  if (elements.screenSelect && elements.screenSheet) {
+    elements.screenSelect.classList.add('hidden');
+    elements.screenSheet.classList.remove('hidden');
+  }
 }
 
 function renderAbilities(abilities) {
+  if (!elements.activeAbilities) return;
+
   elements.activeAbilities.innerHTML = '';
 
   const fragment = document.createDocumentFragment();
@@ -261,29 +313,33 @@ function renderAbilities(abilities) {
 }
 
 function wireInteractions() {
-  elements.backToSelect.addEventListener('click', () => {
-    elements.screenSheet.classList.add('hidden');
-    elements.screenSelect.classList.remove('hidden');
-  });
+  if (elements.backToSelect && elements.screenSheet && elements.screenSelect) {
+    elements.backToSelect.addEventListener('click', () => {
+      elements.screenSheet.classList.add('hidden');
+      elements.screenSelect.classList.remove('hidden');
+    });
+  }
 
-  elements.createCharacterBtn.addEventListener('click', () => {
-    alert('En una próxima versión podrás crear nuevos personajes desde aquí.');
-  });
-
-  elements.editCharacterBtn.addEventListener('click', () => {
-    alert('Las herramientas de edición estarán disponibles cuando la app se sincronice con el Master.');
-  });
-
-  elements.deleteCharacterBtn.addEventListener('click', () => {
-    alert('Pronto podrás gestionar y eliminar personajes desde la app.');
-  });
+  if (elements.createCharacterBtn) {
+    elements.createCharacterBtn.addEventListener('click', () => {
+      alert('En una próxima versión podrás crear nuevos personajes desde aquí.');
+    });
+  }
 }
 
 function init() {
+  cacheElements();
+
   if (!characters.length) return;
   renderCharacterList();
-  showCharacterSheet(selectedCharacterId);
+  if (selectedCharacterId) {
+    showCharacterSheet(selectedCharacterId);
+  }
   wireInteractions();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+  init();
+}

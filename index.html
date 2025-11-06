@@ -6,9 +6,16 @@
   <title>CharSheet Companion</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2Pk8vU1us1r28M4P5AN2RFxjv0v9Uqk0hN6D+JQ9v6TztS3xY+4GkW3jw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="styles.css" />
+  <link id="mainStylesheet" rel="stylesheet" href="" />
+  <script>
+    window.APP_VERSION = Date.now().toString();
+    const stylesheet = document.getElementById('mainStylesheet');
+    if (stylesheet) {
+      stylesheet.href = `styles.css?v=${window.APP_VERSION}`;
+    }
+  </script>
 </head>
 <body>
   <div id="app" class="app">
@@ -23,16 +30,6 @@
       <section class="character-list" id="characterList">
         <!-- Character cards inserted by JS -->
       </section>
-      <footer class="select-footer">
-        <button class="btn secondary" id="editCharacterBtn">
-          <i class="fa-solid fa-pen"></i>
-          Editar Seleccionado
-        </button>
-        <button class="btn secondary" id="deleteCharacterBtn">
-          <i class="fa-solid fa-trash"></i>
-          Borrar Seleccionado
-        </button>
-      </footer>
     </div>
 
     <div class="character-sheet hidden" data-screen="sheet">
@@ -42,7 +39,7 @@
       </button>
       <section class="hero-card">
         <div class="hero-background"></div>
-        <img src="https://images.unsplash.com/photo-1546483875-ad9014c88eba?auto=format&fit=crop&w=640&q=80" alt="Retrato del personaje" class="hero-portrait" />
+        <img src="assets/elanor-vex.svg" alt="Retrato del personaje" class="hero-portrait" />
         <div class="hero-overlay"></div>
         <div class="hero-info">
           <h2 id="heroName" class="hero-name">Nombre del PJ</h2>
@@ -143,6 +140,12 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    (function loadAppScript() {
+      const script = document.createElement('script');
+      script.src = `script.js?v=${window.APP_VERSION}`;
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>
