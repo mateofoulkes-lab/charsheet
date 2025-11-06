@@ -135,24 +135,28 @@ const characters = [
   }
 ];
 
-const elements = {
-  characterList: document.getElementById('characterList'),
-  createCharacterBtn: document.getElementById('createCharacterBtn'),
-  editCharacterBtn: document.getElementById('editCharacterBtn'),
-  deleteCharacterBtn: document.getElementById('deleteCharacterBtn'),
-  backToSelect: document.getElementById('backToSelect'),
-  heroName: document.getElementById('heroName'),
-  heroDetails: document.getElementById('heroDetails'),
-  heroPortrait: document.querySelector('.hero-portrait'),
-  statsPanel: document.querySelectorAll('.stat'),
-  activeAbilities: document.getElementById('activeAbilities'),
-  screenSelect: document.querySelector('[data-screen="select"]'),
-  screenSheet: document.querySelector('[data-screen="sheet"]')
-};
+const elements = {};
+
+function cacheElements() {
+  elements.characterList = document.getElementById('characterList');
+  elements.createCharacterBtn = document.getElementById('createCharacterBtn');
+  elements.editCharacterBtn = document.getElementById('editCharacterBtn');
+  elements.deleteCharacterBtn = document.getElementById('deleteCharacterBtn');
+  elements.backToSelect = document.getElementById('backToSelect');
+  elements.heroName = document.getElementById('heroName');
+  elements.heroDetails = document.getElementById('heroDetails');
+  elements.heroPortrait = document.querySelector('.hero-portrait');
+  elements.statsPanel = document.querySelectorAll('.stat');
+  elements.activeAbilities = document.getElementById('activeAbilities');
+  elements.screenSelect = document.querySelector('[data-screen="select"]');
+  elements.screenSheet = document.querySelector('[data-screen="sheet"]');
+}
 
 let selectedCharacterId = characters[0]?.id ?? null;
 
 function renderCharacterList() {
+  if (!elements.characterList) return;
+
   const fragment = document.createDocumentFragment();
 
   characters.forEach((character) => {
@@ -186,11 +190,15 @@ function renderCharacterList() {
 
 function showCharacterSheet(characterId) {
   const character = characters.find((c) => c.id === characterId);
-  if (!character) return;
+  if (!character || !elements.heroName || !elements.heroDetails || !elements.heroPortrait) {
+    return;
+  }
 
   elements.heroName.textContent = character.name;
   elements.heroDetails.innerHTML = `${character.ancestry} &bull; ${character.clazz} &bull; Nivel ${character.level}`;
   elements.heroPortrait.src = character.portrait;
+
+  if (!elements.statsPanel || elements.statsPanel.length === 0) return;
 
   elements.statsPanel.forEach((statElement) => {
     const statKey = statElement.dataset.stat;
@@ -211,11 +219,16 @@ function showCharacterSheet(characterId) {
   });
 
   renderAbilities(character.abilities);
-  elements.screenSelect.classList.add('hidden');
-  elements.screenSheet.classList.remove('hidden');
+
+  if (elements.screenSelect && elements.screenSheet) {
+    elements.screenSelect.classList.add('hidden');
+    elements.screenSheet.classList.remove('hidden');
+  }
 }
 
 function renderAbilities(abilities) {
+  if (!elements.activeAbilities) return;
+
   elements.activeAbilities.innerHTML = '';
 
   const fragment = document.createDocumentFragment();
@@ -261,29 +274,45 @@ function renderAbilities(abilities) {
 }
 
 function wireInteractions() {
-  elements.backToSelect.addEventListener('click', () => {
-    elements.screenSheet.classList.add('hidden');
-    elements.screenSelect.classList.remove('hidden');
-  });
+  if (elements.backToSelect && elements.screenSheet && elements.screenSelect) {
+    elements.backToSelect.addEventListener('click', () => {
+      elements.screenSheet.classList.add('hidden');
+      elements.screenSelect.classList.remove('hidden');
+    });
+  }
 
-  elements.createCharacterBtn.addEventListener('click', () => {
-    alert('En una próxima versión podrás crear nuevos personajes desde aquí.');
-  });
+  if (elements.createCharacterBtn) {
+    elements.createCharacterBtn.addEventListener('click', () => {
+      alert('En una próxima versión podrás crear nuevos personajes desde aquí.');
+    });
+  }
 
-  elements.editCharacterBtn.addEventListener('click', () => {
-    alert('Las herramientas de edición estarán disponibles cuando la app se sincronice con el Master.');
-  });
+  if (elements.editCharacterBtn) {
+    elements.editCharacterBtn.addEventListener('click', () => {
+      alert('Las herramientas de edición estarán disponibles cuando la app se sincronice con el Master.');
+    });
+  }
 
-  elements.deleteCharacterBtn.addEventListener('click', () => {
-    alert('Pronto podrás gestionar y eliminar personajes desde la app.');
-  });
+  if (elements.deleteCharacterBtn) {
+    elements.deleteCharacterBtn.addEventListener('click', () => {
+      alert('Pronto podrás gestionar y eliminar personajes desde la app.');
+    });
+  }
 }
 
 function init() {
+  cacheElements();
+
   if (!characters.length) return;
   renderCharacterList();
-  showCharacterSheet(selectedCharacterId);
+  if (selectedCharacterId) {
+    showCharacterSheet(selectedCharacterId);
+  }
   wireInteractions();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+  init();
+}
