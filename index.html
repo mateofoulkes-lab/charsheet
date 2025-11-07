@@ -11,7 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2Pk8vU1us1r28M4P5AN2RFxjv0v9Uqk0hN6D+JQ9v6TztS3xY+4GkW3jw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2Pk8vU1us1r28M4P5AN2RFxjv0v9Uqk0hN6D+JQ9v6TztS3xY+4GkW3jw=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
   <link id="mainStylesheet" rel="stylesheet" href="" />
   <script>
     window.APP_VERSION = Date.now().toString();
@@ -30,7 +36,7 @@
       <header class="select-header">
         <h1>Selecciona tu Personaje</h1>
         <button class="btn create-btn" id="createCharacterBtn">
-          <i class="fa-solid fa-plus"></i>
+          <i class="fa-solid fa-user-plus"></i>
           Crear Personaje
         </button>
       </header>
@@ -40,65 +46,96 @@
     </div>
 
     <div class="character-sheet hidden" data-screen="sheet">
-      <button class="btn back-btn" id="backToSelect">
-        <i class="fa-solid fa-chevron-left"></i>
-        Volver
-      </button>
       <section class="hero-card">
         <div class="hero-background"></div>
         <img data-default-portrait alt="Retrato del personaje" class="hero-portrait" />
         <div class="hero-overlay"></div>
         <div class="hero-info">
           <h2 id="heroName" class="hero-name">Nombre del PJ</h2>
-          <p id="heroDetails" class="hero-details">Humano &bull; Bardo &bull; Nivel 3</p>
+          <p id="heroDetails" class="hero-details">Humano · Bardo · Nivel 3</p>
         </div>
+        <button
+          type="button"
+          class="hero-toggle"
+          id="heroToggle"
+          aria-label="Minimizar cabecera del personaje"
+          aria-expanded="true"
+        >
+          <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+        </button>
       </section>
 
       <section class="stats-panel">
         <div class="stat" data-stat="vida">
           <span class="stat-icon"><i class="fa-solid fa-heart"></i></span>
           <div class="stat-content">
-            <span class="stat-label">Vida</span>
+            <span class="stat-label">VIDA</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="ataque">
           <span class="stat-icon"><i class="fa-solid fa-crosshairs"></i></span>
           <div class="stat-content">
-            <span class="stat-label">Ataque</span>
+            <span class="stat-label">ATQ</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="defensa">
           <span class="stat-icon"><i class="fa-solid fa-shield"></i></span>
           <div class="stat-content">
-            <span class="stat-label">Defensa</span>
+            <span class="stat-label">DEF</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="danio">
           <span class="stat-icon"><i class="fa-solid fa-burst"></i></span>
           <div class="stat-content">
-            <span class="stat-label">Daño</span>
+            <span class="stat-label">DAÑO</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="movimiento">
           <span class="stat-icon"><i class="fa-solid fa-person-running"></i></span>
           <div class="stat-content">
-            <span class="stat-label">Movimiento</span>
+            <span class="stat-label">MOV</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="alcance">
           <span class="stat-icon"><i class="fa-solid fa-arrows-to-eye"></i></span>
           <div class="stat-content">
-            <span class="stat-label">Alcance</span>
+            <span class="stat-label">ALC</span>
             <span class="stat-value">0</span>
           </div>
         </div>
       </section>
     </div>
+    <nav class="bottom-bar" aria-label="Menú principal">
+      <button type="button" class="nav-button" data-action="back" aria-label="Volver">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <span class="sr-only">Volver</span>
+      </button>
+      <button type="button" class="nav-button" data-action="sheet" aria-label="Hoja de personaje">
+        <i class="fa-solid fa-user" aria-hidden="true"></i>
+        <span class="sr-only">Hoja de personaje</span>
+      </button>
+      <button type="button" class="nav-button" data-action="inventory" aria-label="Inventario">
+        <i class="fa-solid fa-toolbox" aria-hidden="true"></i>
+        <span class="sr-only">Inventario</span>
+      </button>
+      <button type="button" class="nav-button" data-action="abilities" aria-label="Habilidades y hechizos">
+        <i class="fa-solid fa-hand-sparkles" aria-hidden="true"></i>
+        <span class="sr-only">Habilidades y hechizos</span>
+      </button>
+      <button type="button" class="nav-button" data-action="notes" aria-label="Notas">
+        <i class="fa-solid fa-hand-sparkles" aria-hidden="true"></i>
+        <span class="sr-only">Notas</span>
+      </button>
+      <button type="button" class="nav-button" data-action="settings" aria-label="Opciones">
+        <i class="fa-solid fa-gear" aria-hidden="true"></i>
+        <span class="sr-only">Opciones</span>
+      </button>
+    </nav>
   </div>
 
   <div id="characterEditor" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
