@@ -188,6 +188,7 @@
           <div class="stat-content">
             <span class="stat-label">VIDA</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="vida"></div>
           </div>
         </div>
         <div class="stat" data-stat="ataque">
@@ -199,6 +200,7 @@
           <div class="stat-content">
             <span class="stat-label">ATQ</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="ataque"></div>
           </div>
         </div>
         <div class="stat" data-stat="defensa">
@@ -210,6 +212,7 @@
           <div class="stat-content">
             <span class="stat-label">DEF</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="defensa"></div>
           </div>
         </div>
         <div class="stat" data-stat="danio">
@@ -221,6 +224,7 @@
           <div class="stat-content">
             <span class="stat-label">DAÑO</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="danio"></div>
           </div>
         </div>
         <div class="stat" data-stat="movimiento">
@@ -230,6 +234,7 @@
           <div class="stat-content">
             <span class="stat-label">MOV</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="movimiento"></div>
           </div>
         </div>
         <div class="stat" data-stat="alcance">
@@ -239,9 +244,30 @@
           <div class="stat-content">
             <span class="stat-label">ALC</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="alcance"></div>
           </div>
         </div>
       </section>
+    </div>
+    <div class="abilities-screen hidden" data-screen="abilities">
+      <div class="abilities-header">
+        <button type="button" class="btn primary" id="addActiveAbility">Agregar habilidad activa</button>
+        <button type="button" class="btn secondary" id="addPassiveAbility">Agregar habilidad pasiva</button>
+      </div>
+      <div class="ability-columns">
+        <section class="ability-column">
+          <header class="ability-column-header">
+            <h3>Habilidades activas</h3>
+          </header>
+          <div class="ability-list" id="activeAbilityList" aria-live="polite"></div>
+        </section>
+        <section class="ability-column">
+          <header class="ability-column-header">
+            <h3>Habilidades pasivas</h3>
+          </header>
+          <div class="ability-list" id="passiveAbilityList" aria-live="polite"></div>
+        </section>
+      </div>
     </div>
     <nav class="bottom-bar" aria-label="Menú principal">
       <button type="button" class="nav-button" data-action="back" aria-label="Volver">
@@ -388,6 +414,113 @@
         </section>
         <footer class="form-actions">
           <button type="button" class="btn secondary" id="cancelEditor">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="activeAbilityModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="activeAbilityModalTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="active"></div>
+    <div class="modal-dialog ability-modal">
+      <header class="modal-header">
+        <h2 id="activeAbilityModalTitle">Nueva habilidad activa</h2>
+        <button type="button" class="icon-button close" id="closeActiveAbility" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <form id="activeAbilityForm" class="ability-form" autocomplete="off">
+        <div class="form-grid one-col">
+          <label class="form-field stacked">
+            Título
+            <input id="activeAbilityTitle" name="title" type="text" required />
+          </label>
+          <label class="form-field stacked">
+            Descripción
+            <textarea id="activeAbilityDescription" name="description" rows="3"></textarea>
+          </label>
+          <label class="form-field stacked">
+            Características (una por línea)
+            <textarea id="activeAbilityFeatures" name="features" rows="4"></textarea>
+          </label>
+          <label class="form-field stacked">
+            Turnos de cooldown
+            <input id="activeAbilityCooldown" name="cooldown" type="number" min="0" value="0" />
+          </label>
+        </div>
+        <div class="ability-image-field">
+          <img id="activeAbilityPreview" alt="Vista previa de la habilidad" />
+          <div class="ability-image-actions">
+            <label class="btn primary file-btn">
+              <svg class="icon icon-upload" aria-hidden="true" focusable="false">
+                <use href="#icon-upload" xlink:href="#icon-upload"></use>
+              </svg>
+              Subir PNG
+              <input id="activeAbilityImage" type="file" accept="image/png" hidden />
+            </label>
+            <button type="button" class="btn secondary" id="clearActiveAbilityImage">Quitar imagen</button>
+          </div>
+        </div>
+        <footer class="form-actions">
+          <button type="button" class="btn secondary" id="cancelActiveAbility">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="passiveAbilityModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="passiveAbilityModalTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="passive"></div>
+    <div class="modal-dialog ability-modal">
+      <header class="modal-header">
+        <h2 id="passiveAbilityModalTitle">Nueva habilidad pasiva</h2>
+        <button type="button" class="icon-button close" id="closePassiveAbility" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <form id="passiveAbilityForm" class="ability-form" autocomplete="off">
+        <div class="form-grid one-col">
+          <label class="form-field stacked">
+            Título
+            <input id="passiveAbilityTitle" name="title" type="text" required />
+          </label>
+          <label class="form-field stacked">
+            Descripción
+            <textarea id="passiveAbilityDescription" name="description" rows="3"></textarea>
+          </label>
+          <label class="form-field stacked">
+            Características (una por línea)
+            <textarea id="passiveAbilityFeatures" name="features" rows="4"></textarea>
+          </label>
+        </div>
+        <section class="modifier-section">
+          <div class="modifier-header">
+            <h3>Modificadores</h3>
+            <button type="button" class="btn tertiary" id="addPassiveModifier">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              <span>Agregar modificador</span>
+            </button>
+          </div>
+          <div class="modifier-list" id="passiveModifierList" aria-live="polite"></div>
+        </section>
+        <footer class="form-actions">
+          <button type="button" class="btn secondary" id="cancelPassiveAbility">Cancelar</button>
           <button type="submit" class="btn primary">Guardar</button>
         </footer>
       </form>
