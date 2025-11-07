@@ -370,6 +370,7 @@ function cacheElements() {
   elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
+  elements.heroAffiliation = document.getElementById('heroAffiliation');
   elements.heroPortrait = document.querySelector('.hero-portrait');
   elements.heroToggle = document.getElementById('heroToggle');
   elements.heroToggleIcon = elements.heroToggle?.querySelector('use') ?? null;
