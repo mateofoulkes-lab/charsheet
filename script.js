@@ -181,12 +181,17 @@ function ensureUniqueId(baseId) {
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
-  elements.backToSelect = document.getElementById('backToSelect');
+  elements.navBack = document.querySelector('.bottom-bar [data-action="back"]');
+  elements.navSheet = document.querySelector('.bottom-bar [data-action="sheet"]');
+  elements.navButtons = document.querySelectorAll('.bottom-bar .nav-button');
   elements.screenSelect = document.querySelector('[data-screen="select"]');
   elements.screenSheet = document.querySelector('[data-screen="sheet"]');
+  elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
   elements.heroPortrait = document.querySelector('.hero-portrait');
+  elements.heroToggle = document.getElementById('heroToggle');
+  elements.heroToggleIcon = elements.heroToggle?.querySelector('i') ?? null;
   elements.stats = document.querySelectorAll('.stat');
   elements.editorModal = document.getElementById('characterEditor');
   elements.editorBackdrop = document.getElementById('editorBackdrop');
@@ -197,6 +202,14 @@ function cacheElements() {
   elements.clearPortrait = document.getElementById('clearPortrait');
   elements.cancelEditor = document.getElementById('cancelEditor');
   elements.closeEditor = document.getElementById('closeEditor');
+}
+
+function updateNavState(activeAction) {
+  if (!elements.navButtons) return;
+  elements.navButtons.forEach((button) => {
+    const action = button.dataset.action;
+    button.classList.toggle('active', action === activeAction);
+  });
 }
 
 function renderCharacterList() {
@@ -282,6 +295,7 @@ function deleteCharacter(character) {
     } else if (elements.screenSheet && elements.screenSelect) {
       elements.screenSheet.classList.add('hidden');
       elements.screenSelect.classList.remove('hidden');
+      updateNavState(null);
     }
   }
 
@@ -305,7 +319,7 @@ function showCharacterSheet(characterId) {
     if (character.campaign) {
       parts.push(character.campaign);
     }
-    elements.heroDetails.innerHTML = parts.join(' • ');
+    elements.heroDetails.textContent = parts.join(' · ');
   }
 
   if (elements.heroPortrait) {
@@ -328,6 +342,8 @@ function showCharacterSheet(characterId) {
     elements.screenSelect.classList.add('hidden');
     elements.screenSheet.classList.remove('hidden');
   }
+
+  updateNavState('sheet');
 }
 
 function createBlankCharacter() {
@@ -484,10 +500,27 @@ function wireInteractions() {
   elements.createCharacterBtn?.addEventListener('click', () => {
     openCharacterEditor();
   });
-  elements.backToSelect?.addEventListener('click', () => {
+  elements.navBack?.addEventListener('click', () => {
     elements.screenSheet?.classList.add('hidden');
     elements.screenSelect?.classList.remove('hidden');
+    updateNavState(null);
   });
+  elements.navSheet?.addEventListener('click', () => {
+    if (!selectedCharacterId && characters[0]) {
+      selectCharacter(characters[0].id);
+      return;
+    }
+    if (selectedCharacterId) {
+      showCharacterSheet(selectedCharacterId);
+    }
+  });
+
+  if (elements.heroToggle && elements.heroCard) {
+    elements.heroToggle.addEventListener('click', () => {
+      const nextCollapsed = !elements.heroCard.classList.contains('collapsed');
+      setHeroCardCollapsed(nextCollapsed);
+    });
+  }
 
   elements.editorBackdrop?.addEventListener('click', closeCharacterEditor);
   elements.closeEditor?.addEventListener('click', closeCharacterEditor);
@@ -509,6 +542,22 @@ function wireInteractions() {
   });
 }
 
+function setHeroCardCollapsed(collapsed) {
+  if (!elements.heroCard || !elements.heroToggle) return;
+
+  elements.heroCard.classList.toggle('collapsed', collapsed);
+  elements.heroToggle.setAttribute('aria-expanded', String(!collapsed));
+  elements.heroToggle.setAttribute(
+    'aria-label',
+    collapsed ? 'Restaurar cabecera del personaje' : 'Minimizar cabecera del personaje'
+  );
+
+  if (elements.heroToggleIcon) {
+    elements.heroToggleIcon.classList.toggle('fa-chevron-up', !collapsed);
+    elements.heroToggleIcon.classList.toggle('fa-chevron-down', collapsed);
+  }
+}
+
 function init() {
   cacheElements();
   characters = loadCharacters();
@@ -526,6 +575,8 @@ function init() {
 
   if (selectedCharacterId) {
     showCharacterSheet(selectedCharacterId);
+  } else {
+    updateNavState(null);
   }
 
   wireInteractions();
