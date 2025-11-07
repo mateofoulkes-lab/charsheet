@@ -201,7 +201,6 @@ function renderCharacterList() {
   const fragment = document.createDocumentFragment();
 
   characters.forEach((character) => {
-    const portraitSrc = withVersion(character.portrait);
     const card = document.createElement('article');
     card.className = `character-card${character.id === selectedCharacterId ? ' active' : ''}`;
     card.dataset.id = character.id;
@@ -249,36 +248,6 @@ function renderCharacterList() {
       event.stopPropagation();
       deleteCharacter(character);
     });
-
-    const editButton = card.querySelector('.icon-button.edit');
-    const deleteButton = card.querySelector('.icon-button.delete');
-
-    editButton?.addEventListener('click', (event) => {
-      event.stopPropagation();
-      openCharacterEditor(character);
-    });
-
-    deleteButton?.addEventListener('click', (event) => {
-      event.stopPropagation();
-      deleteCharacter(character);
-    });
-
-    const editButton = card.querySelector('.icon-button.edit');
-    const deleteButton = card.querySelector('.icon-button.delete');
-
-    if (editButton) {
-      editButton.addEventListener('click', (event) => {
-        event.stopPropagation();
-        handleEditCharacter(character);
-      });
-    }
-
-    if (deleteButton) {
-      deleteButton.addEventListener('click', (event) => {
-        event.stopPropagation();
-        handleDeleteCharacter(character);
-      });
-    }
 
     fragment.appendChild(card);
   });
@@ -504,26 +473,10 @@ function wireInteractions() {
   elements.createCharacterBtn?.addEventListener('click', () => {
     openCharacterEditor();
   });
-  header.appendChild(removeBtn);
-  abilityEl.appendChild(header);
-
   elements.backToSelect?.addEventListener('click', () => {
     elements.screenSheet?.classList.add('hidden');
     elements.screenSelect?.classList.remove('hidden');
   });
-  nameLabel.appendChild(nameInput);
-  grid.appendChild(nameLabel);
-
-  const iconLabel = document.createElement('label');
-  iconLabel.className = 'form-field stacked';
-  iconLabel.textContent = 'Icono (clase Font Awesome)';
-  const iconInput = document.createElement('input');
-  iconInput.type = 'text';
-  iconInput.dataset.field = 'ability-icon';
-  iconInput.placeholder = 'fa-solid fa-star';
-  iconInput.value = normalized.icon;
-  iconLabel.appendChild(iconInput);
-  grid.appendChild(iconLabel);
 
   elements.editorBackdrop?.addEventListener('click', closeCharacterEditor);
   elements.closeEditor?.addEventListener('click', closeCharacterEditor);
