@@ -1,0 +1,23 @@
+{
+  "name": "CharSheet Companion",
+  "short_name": "CharSheet",
+  "description": "Gestiona y consulta tus personajes de rol desde cualquier lugar.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#060507",
+  "theme_color": "#060507",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-maskable.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

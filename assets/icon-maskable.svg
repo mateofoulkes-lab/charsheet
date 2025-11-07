@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="maskable-bg" cx="0.32" cy="0.28" r="0.9">
+      <stop offset="0" stop-color="#312012" />
+      <stop offset="1" stop-color="#0b0604" />
+    </radialGradient>
+    <linearGradient id="maskable-blade" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffe8b0" />
+      <stop offset="1" stop-color="#c88a34" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" ry="128" fill="url(#maskable-bg)" />
+  <g transform="translate(96 88)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M160 24 272 208 160 392 48 208z" fill="none" stroke="#ffd077" stroke-width="26" />
+    <path d="M160 88 220 208 160 328 100 208z" fill="url(#maskable-blade)" />
+    <circle cx="160" cy="208" r="34" fill="#060507" stroke="#ffd077" stroke-width="14" />
+  </g>
+</svg>
