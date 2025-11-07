@@ -52,6 +52,17 @@ const editorState = {
 let characters = [];
 let selectedCharacterId = null;
 
+function iconMarkup(name, { className = '', label = null } = {}) {
+  if (!name) return '';
+  const classes = ['icon', `icon-${name}`];
+  if (className) {
+    classes.push(className);
+  }
+  const safeLabel = label ? String(label).replace(/"/g, '&quot;') : null;
+  const ariaAttributes = safeLabel ? `role="img" aria-label="${safeLabel}"` : 'aria-hidden="true"';
+  return `<svg class="${classes.join(' ')}" ${ariaAttributes} focusable="false"><use href="#icon-${name}" xlink:href="#icon-${name}"></use></svg>`;
+}
+
 function withVersion(path) {
   if (!window.APP_VERSION || typeof path !== 'string' || path.startsWith('data:')) {
     return path;
@@ -191,7 +202,7 @@ function cacheElements() {
   elements.heroDetails = document.getElementById('heroDetails');
   elements.heroPortrait = document.querySelector('.hero-portrait');
   elements.heroToggle = document.getElementById('heroToggle');
-  elements.heroToggleIcon = elements.heroToggle?.querySelector('i') ?? null;
+  elements.heroToggleIcon = elements.heroToggle?.querySelector('use') ?? null;
   elements.stats = document.querySelectorAll('.stat');
   elements.editorModal = document.getElementById('characterEditor');
   elements.editorBackdrop = document.getElementById('editorBackdrop');
@@ -240,11 +251,11 @@ function renderCharacterList() {
       </div>
       <div class="card-actions">
         <button class="icon-button edit" type="button" title="Editar ${character.name}">
-          <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+          ${iconMarkup('pen-to-square')}
           <span>Editar</span>
         </button>
         <button class="icon-button delete" type="button" title="Eliminar ${character.name}">
-          <i class="fa-solid fa-trash" aria-hidden="true"></i>
+          ${iconMarkup('trash')}
           <span>Borrar</span>
         </button>
       </div>
@@ -576,8 +587,9 @@ function setHeroCardCollapsed(collapsed) {
   );
 
   if (elements.heroToggleIcon) {
-    elements.heroToggleIcon.classList.toggle('fa-chevron-up', !collapsed);
-    elements.heroToggleIcon.classList.toggle('fa-chevron-down', collapsed);
+    const iconId = collapsed ? '#icon-chevron-down' : '#icon-chevron-up';
+    elements.heroToggleIcon.setAttribute('href', iconId);
+    elements.heroToggleIcon.setAttribute('xlink:href', iconId);
   }
 }
 

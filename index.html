@@ -11,13 +11,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-    integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2Pk8vU1us1r28M4P5AN2RFxjv0v9Uqk0hN6D+JQ9v6TztS3xY+4GkW3jw=="
-    crossorigin="anonymous"
-    referrerpolicy="no-referrer"
-  />
   <link id="mainStylesheet" rel="stylesheet" href="" />
   <script>
     window.APP_VERSION = Date.now().toString();
@@ -31,12 +24,121 @@
   </script>
 </head>
 <body>
+  <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display: none">
+    <symbol id="icon-user" viewBox="0 0 24 24">
+      <circle cx="12" cy="7" r="4" fill="currentColor" />
+      <path
+        d="M5 20.5C5 16.1 8.58 13 12 13s7 3.1 7 7.5v1.5H5z"
+        fill="currentColor"
+      />
+    </symbol>
+    <symbol id="icon-user-plus" viewBox="0 0 24 24">
+      <circle cx="9" cy="8" r="3.8" fill="currentColor" />
+      <path d="M3 20.5C3 15.8 6.58 12 11 12s8 3.8 8 8.5v1.5H3z" fill="currentColor" />
+      <path d="M18 4h2v2h2v2h-2v2h-2V8h-2V6h2z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-chevron-up" viewBox="0 0 24 24">
+      <path d="M6.4 15.1 12 9.5l5.6 5.6-1.4 1.4L12 12.3l-4.2 4.2z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24">
+      <path d="M6.4 8.9 12 14.5l5.6-5.6 1.4 1.4L12 17.7 5 10.3z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-heart" viewBox="0 0 24 24">
+      <path
+        d="M12 21s-6.4-4.9-8.2-8C2 9.9 3 6.2 6 4.9a4.5 4.5 0 0 1 6 2 4.5 4.5 0 0 1 6-2C21 6.2 22 9.9 20.2 13c-1.8 3.1-8.2 8-8.2 8z"
+        fill="currentColor"
+      />
+    </symbol>
+    <symbol id="icon-crosshairs" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2" />
+      <path d="M12 3v3m0 15v-3M3 12h3m15 0h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24">
+      <path
+        d="M12 2.5 4.5 5.7v6c0 4.8 3.4 9.5 7.5 10.8 4.1-1.3 7.5-6 7.5-10.8v-6z"
+        fill="currentColor"
+      />
+    </symbol>
+    <symbol id="icon-burst" viewBox="0 0 24 24">
+      <path
+        d="M12 3.5 14.1 8l4.9-.3-3.7 3.3 1.1 4.7-4.4-2.4-4.4 2.4 1.1-4.7-3.7-3.3 4.9.3z"
+        fill="currentColor"
+      />
+    </symbol>
+    <symbol id="icon-movement" viewBox="0 0 24 24">
+      <path
+        d="M5 18.5 10.5 9l-3-.8 1-2.7 6.5 2a2 2 0 0 1 1.2 1.1l1 2.3 2.3 1-1 2.6-2.6-1.1-1.5 2.4 3.1 1.5-1.3 2.4-4.8-2.4-2.8 4.5z"
+        fill="currentColor"
+      />
+    </symbol>
+    <symbol id="icon-eye-range" viewBox="0 0 24 24">
+      <path
+        d="M12 6.5c5 0 8.6 3.8 9.9 5.5-1.3 1.7-4.9 5.5-9.9 5.5s-8.6-3.8-9.9-5.5C3.4 10.3 7 6.5 12 6.5z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+      />
+      <circle cx="12" cy="12" r="2.6" fill="currentColor" />
+      <path d="M4 5 2.5 3.5 5.5 2l1 2.8z" fill="currentColor" />
+      <path d="M4.7 5.7 11 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+    </symbol>
+    <symbol id="icon-arrow-left" viewBox="0 0 24 24">
+      <path d="m10.4 5.6-6.8 6.4 6.8 6.4 1.6-1.7-3.9-3.7H21v-2.9H8.1l3.9-3.7z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-toolbox" viewBox="0 0 24 24">
+      <path d="M7 6V4h10v2h4v12H3V6z" fill="currentColor" opacity="0.85" />
+      <rect x="5" y="9" width="14" height="7" rx="1" ry="1" fill="currentColor" />
+      <path d="M10 6V5h4v1z" fill="#060507" opacity="0.45" />
+    </symbol>
+    <symbol id="icon-hand-sparkles" viewBox="0 0 24 24">
+      <path
+        d="M7 12.5V9.2a1.2 1.2 0 1 1 2.4 0v2.2l.1-3a1.2 1.2 0 1 1 2.4 0V12l.2-3.3a1.2 1.2 0 1 1 2.4.2V12l.3-2.3a1.2 1.2 0 1 1 2.4.4L17 16.5a4.5 4.5 0 0 1-4.4 3.7H8a3 3 0 0 1-3-3v-1.4a2.3 2.3 0 0 1 2-2.3z"
+        fill="currentColor"
+      />
+      <path d="M6 4.5 5.2 3l1.6-.7.7-1.6.8 1.6 1.5.7-1.5.8-.7 1.5z" fill="currentColor" />
+      <path d="M17.5 5.5 16.9 4l1.4-.6.6-1.4.6 1.4 1.4.6-1.4.6-.6 1.4z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24">
+      <path
+        d="m10.4 2.5 3.2 0 1 3 2.8 1.1 2.7-1.6 1.6 2.7-2 2.3.3 2.9 2.6 1-1.1 3.1-2.9-.2-1.8 2.2-2.8-1.1-2.8 1.1-1.8-2.2-2.9.2-1.1-3.1 2.6-1-.3-2.9-2-2.3 1.6-2.7 2.7 1.6 2.8-1.1z"
+        fill="currentColor"
+        opacity="0.95"
+      />
+      <circle cx="12" cy="12" r="3" fill="#060507" opacity="0.35" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-xmark" viewBox="0 0 24 24">
+      <path d="m6 6 12 12m0-12-12 12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="icon-upload" viewBox="0 0 24 24">
+      <path d="M5 19h14v2H5z" fill="currentColor" />
+      <path d="M12 4.5 7.5 9h3v6h4V9h3z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-eraser" viewBox="0 0 24 24">
+      <path d="M3 16 11.5 6h4L21 11l-6.5 7H8z" fill="currentColor" />
+      <path d="M8 17h9v2H8z" fill="#060507" opacity="0.4" />
+    </symbol>
+    <symbol id="icon-pen-to-square" viewBox="0 0 24 24">
+      <path
+        d="M5 4h9l-2 2H7v12h10v-5l2-2v9H5z"
+        fill="currentColor"
+      />
+      <path d="m20.7 5.3-1-1a1 1 0 0 0-1.4 0l-5.1 5.1V13h3.6l5-5a1 1 0 0 0 0-1.4z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24">
+      <path d="M9 4h6l1 2h5v2H4V6h5z" fill="currentColor" />
+      <path d="M6 8h12l-.8 11.2A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.8z" fill="currentColor" />
+      <path d="M10 11h1v7h-1zm3 0h1v7h-1z" fill="#060507" opacity="0.4" />
+    </symbol>
+  </svg>
   <div id="app" class="app">
     <div class="character-select" data-screen="select">
       <header class="select-header">
         <h1>Selecciona tu Personaje</h1>
         <button class="btn create-btn" id="createCharacterBtn">
-          <i class="fa-solid fa-user-plus"></i>
+          <svg class="icon icon-user-plus" aria-hidden="true" focusable="false">
+            <use href="#icon-user-plus" xlink:href="#icon-user-plus"></use>
+          </svg>
           Crear Personaje
         </button>
       </header>
@@ -61,48 +163,74 @@
           aria-label="Minimizar cabecera del personaje"
           aria-expanded="true"
         >
-          <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+          <svg class="icon icon-chevron-up" aria-hidden="true" focusable="false">
+            <use href="#icon-chevron-up" xlink:href="#icon-chevron-up"></use>
+          </svg>
         </button>
       </section>
 
       <section class="stats-panel">
         <div class="stat" data-stat="vida">
-          <span class="stat-icon"><i class="fa-solid fa-heart"></i></span>
+          <span class="stat-icon">
+            <svg class="icon icon-heart" aria-hidden="true" focusable="false">
+              <use href="#icon-heart" xlink:href="#icon-heart"></use>
+            </svg>
+          </span>
           <div class="stat-content">
             <span class="stat-label">VIDA</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="ataque">
-          <span class="stat-icon"><i class="fa-solid fa-crosshairs"></i></span>
+          <span class="stat-icon">
+            <svg class="icon icon-crosshairs" aria-hidden="true" focusable="false">
+              <use href="#icon-crosshairs" xlink:href="#icon-crosshairs"></use>
+            </svg>
+          </span>
           <div class="stat-content">
             <span class="stat-label">ATQ</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="defensa">
-          <span class="stat-icon"><i class="fa-solid fa-shield"></i></span>
+          <span class="stat-icon">
+            <svg class="icon icon-shield" aria-hidden="true" focusable="false">
+              <use href="#icon-shield" xlink:href="#icon-shield"></use>
+            </svg>
+          </span>
           <div class="stat-content">
             <span class="stat-label">DEF</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="danio">
-          <span class="stat-icon"><i class="fa-solid fa-burst"></i></span>
+          <span class="stat-icon">
+            <svg class="icon icon-burst" aria-hidden="true" focusable="false">
+              <use href="#icon-burst" xlink:href="#icon-burst"></use>
+            </svg>
+          </span>
           <div class="stat-content">
             <span class="stat-label">DAÑO</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="movimiento">
-          <span class="stat-icon"><i class="fa-solid fa-person-running"></i></span>
+          <span class="stat-icon">
+            <svg class="icon icon-movement" aria-hidden="true" focusable="false">
+              <use href="#icon-movement" xlink:href="#icon-movement"></use>
+            </svg>
+          </span>
           <div class="stat-content">
             <span class="stat-label">MOV</span>
             <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="alcance">
-          <span class="stat-icon"><i class="fa-solid fa-arrows-to-eye"></i></span>
+          <span class="stat-icon">
+            <svg class="icon icon-eye-range" aria-hidden="true" focusable="false">
+              <use href="#icon-eye-range" xlink:href="#icon-eye-range"></use>
+            </svg>
+          </span>
           <div class="stat-content">
             <span class="stat-label">ALC</span>
             <span class="stat-value">0</span>
@@ -112,27 +240,39 @@
     </div>
     <nav class="bottom-bar" aria-label="Menú principal">
       <button type="button" class="nav-button" data-action="back" aria-label="Volver">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <svg class="icon icon-arrow-left" aria-hidden="true" focusable="false">
+          <use href="#icon-arrow-left" xlink:href="#icon-arrow-left"></use>
+        </svg>
         <span class="sr-only">Volver</span>
       </button>
       <button type="button" class="nav-button" data-action="sheet" aria-label="Hoja de personaje">
-        <i class="fa-solid fa-user" aria-hidden="true"></i>
+        <svg class="icon icon-user" aria-hidden="true" focusable="false">
+          <use href="#icon-user" xlink:href="#icon-user"></use>
+        </svg>
         <span class="sr-only">Hoja de personaje</span>
       </button>
       <button type="button" class="nav-button" data-action="inventory" aria-label="Inventario">
-        <i class="fa-solid fa-toolbox" aria-hidden="true"></i>
+        <svg class="icon icon-toolbox" aria-hidden="true" focusable="false">
+          <use href="#icon-toolbox" xlink:href="#icon-toolbox"></use>
+        </svg>
         <span class="sr-only">Inventario</span>
       </button>
       <button type="button" class="nav-button" data-action="abilities" aria-label="Habilidades y hechizos">
-        <i class="fa-solid fa-hand-sparkles" aria-hidden="true"></i>
+        <svg class="icon icon-hand-sparkles" aria-hidden="true" focusable="false">
+          <use href="#icon-hand-sparkles" xlink:href="#icon-hand-sparkles"></use>
+        </svg>
         <span class="sr-only">Habilidades y hechizos</span>
       </button>
       <button type="button" class="nav-button" data-action="notes" aria-label="Notas">
-        <i class="fa-solid fa-hand-sparkles" aria-hidden="true"></i>
+        <svg class="icon icon-hand-sparkles" aria-hidden="true" focusable="false">
+          <use href="#icon-hand-sparkles" xlink:href="#icon-hand-sparkles"></use>
+        </svg>
         <span class="sr-only">Notas</span>
       </button>
       <button type="button" class="nav-button" data-action="settings" aria-label="Opciones">
-        <i class="fa-solid fa-gear" aria-hidden="true"></i>
+        <svg class="icon icon-gear" aria-hidden="true" focusable="false">
+          <use href="#icon-gear" xlink:href="#icon-gear"></use>
+        </svg>
         <span class="sr-only">Opciones</span>
       </button>
     </nav>
@@ -144,7 +284,9 @@
       <header class="modal-header">
         <h2 id="editorTitle">Editor de personaje</h2>
         <button type="button" class="icon-button close" id="closeEditor" aria-label="Cerrar editor">
-          <i class="fa-solid fa-xmark"></i>
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
         </button>
       </header>
       <form id="characterForm" class="character-form" autocomplete="off">
@@ -180,12 +322,16 @@
             <img id="portraitPreview" data-default-portrait alt="Retrato del personaje" />
             <div class="portrait-actions">
               <label class="btn primary file-btn">
-                <i class="fa-solid fa-upload"></i>
+                <svg class="icon icon-upload" aria-hidden="true" focusable="false">
+                  <use href="#icon-upload" xlink:href="#icon-upload"></use>
+                </svg>
                 Subir PNG
                 <input id="portraitInput" type="file" accept="image/png" hidden />
               </label>
               <button type="button" class="btn secondary" id="clearPortrait">
-                <i class="fa-solid fa-eraser"></i>
+                <svg class="icon icon-eraser" aria-hidden="true" focusable="false">
+                  <use href="#icon-eraser" xlink:href="#icon-eraser"></use>
+                </svg>
                 Quitar
               </button>
             </div>
