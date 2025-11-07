@@ -193,6 +193,10 @@ body {
   color: var(--color-gold-bright);
 }
 
+.character-meta {
+  padding-right: 2.4rem;
+}
+
 .character-meta p {
   margin: 0.15rem 0 0.45rem;
   font-size: 0.9rem;
