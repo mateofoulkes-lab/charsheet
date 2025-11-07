@@ -14,6 +14,7 @@ const defaultCharacters = [
     ancestry: 'Mediano',
     clazz: 'Pícaro',
     level: 5,
+    campaign: 'Compañía Sombraventura',
     stats: {
       vida: '34',
       ataque: '+8',
@@ -30,6 +31,7 @@ const defaultCharacters = [
     ancestry: 'Humana',
     clazz: 'Barda',
     level: 3,
+    campaign: 'Círculo de la Aurora',
     stats: {
       vida: '28',
       ataque: '+6',
@@ -128,6 +130,7 @@ function normalizeCharacter(character) {
     ancestry: character?.ancestry?.trim() || '',
     clazz: character?.clazz?.trim() || '',
     level: Number.parseInt(character?.level ?? 1, 10) || 1,
+    campaign: character?.campaign?.toString().trim() || '',
     stats: normalizedStats
   };
 
@@ -213,12 +216,14 @@ function renderCharacterList() {
       metaParts.push(`Nivel ${character.level}`);
     }
     const metaLine = metaParts.join(' • ');
+    const campaignLine = character.campaign ? `Campaña: ${character.campaign}` : '';
 
     card.innerHTML = `
       <img src="${portraitSrc}" alt="Retrato de ${character.name}" loading="lazy" />
       <div class="character-meta">
         <h2>${character.name}</h2>
-        <p>${metaLine}</p>
+        <p class="character-meta-line">${metaLine || '&nbsp;'}</p>
+        <p class="character-campaign">${campaignLine || '&nbsp;'}</p>
       </div>
       <div class="card-actions">
         <button class="icon-button edit" type="button" title="Editar ${character.name}">
@@ -297,6 +302,9 @@ function showCharacterSheet(characterId) {
       .map((part) => part?.trim())
       .filter(Boolean);
     parts.push(`Nivel ${character.level}`);
+    if (character.campaign) {
+      parts.push(character.campaign);
+    }
     elements.heroDetails.innerHTML = parts.join(' • ');
   }
 
@@ -333,6 +341,7 @@ function createBlankCharacter() {
     ancestry: '',
     clazz: '',
     level: 1,
+    campaign: '',
     portrait: DEFAULT_PORTRAIT,
     stats
   };
@@ -375,7 +384,8 @@ function fillEditorForm(character) {
     characterName: character.name,
     characterAncestry: character.ancestry,
     characterClass: character.clazz,
-    characterLevel: character.level
+    characterLevel: character.level,
+    characterCampaign: character.campaign
   };
 
   Object.entries(map).forEach(([id, value]) => {
@@ -429,6 +439,7 @@ function collectFormData(formData) {
     ancestry: formData.get('characterAncestry')?.toString().trim() || '',
     clazz: formData.get('characterClass')?.toString().trim() || '',
     level: Number.parseInt(formData.get('characterLevel'), 10) || 1,
+    campaign: formData.get('characterCampaign')?.toString().trim() || '',
     portrait: editorState.portrait || DEFAULT_PORTRAIT,
     stats: {}
   };
@@ -524,4 +535,12 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true });
 } else {
   init();
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('sw.js')
+      .catch((error) => console.warn('No se pudo registrar el service worker:', error));
+  });
 }
