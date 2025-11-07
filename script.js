@@ -19,133 +19,25 @@ const MAX_DISPLAY_COOLDOWN = 12;
 
 const defaultCharacters = [
   {
-    id: 'tavian-kors',
-    name: 'Tavian Kors',
+    id: 'boomer-el-chamuscado',
+    name: 'Boomer, el chamuscado',
     portrait: DEFAULT_PORTRAIT,
-    ancestry: 'Mediano',
-    clazz: 'Pícaro',
-    level: 5,
-    campaign: 'Compañía Sombraventura',
-    stats: {
-      vida: '34',
-      ataque: '+8',
-      defensa: '15',
-      danio: '2d6 + 3',
-      movimiento: '12 m',
-      alcance: '9 m'
-    },
-    activeAbilities: [
-      {
-        id: 'golpe-sombrio',
-        title: 'Golpe Sombrío',
-        description: 'Un tajo veloz cubierto de energía sombría.',
-        features: [
-          'Ventaja en la tirada de ataque si actúas primero',
-          'Añade +2d6 de daño cuando atacas desde sigilo'
-        ],
-        cooldown: 2,
-        image: DEFAULT_ABILITY_IMAGE
-      },
-      {
-        id: 'bengala-hipnotica',
-        title: 'Bengala Hipnótica',
-        description: 'Una luz danzante que confunde a tus rivales.',
-        features: [
-          'Los enemigos cercanos realizan tiradas de Sabiduría con desventaja',
-          'Puedes reposicionarte 3 metros sin provocar ataques de oportunidad'
-        ],
-        cooldown: 4,
-        image: ''
-      }
-    ],
-    passiveAbilities: [
-      {
-        id: 'instinto-furtivo',
-        title: 'Instinto Furtivo',
-        description: 'Tu entrenamiento constante mejora tus reflejos.',
-        features: [
-          'Bonificación a la iniciativa',
-          'Puedes repetir una tirada de sigilo fallida por descanso'
-        ],
-        modifiers: [
-          { stat: 'ataque', value: 1 },
-          { stat: 'movimiento', value: 3 }
-        ]
-      }
-    ],
-    inventory: [
-      {
-        id: 'cuerda-de-seda',
-        title: 'Cuerda de seda',
-        description: '15 metros de cuerda resistente y ligera.',
-        image: ''
-      },
-      {
-        id: 'kit-de-ganzuas',
-        title: 'Kit de ganzúas',
-        description: 'Herramientas precisas para sortear cerraduras complicadas.',
-        image: ''
-      }
-    ]
-  },
-  {
-    id: 'elanor-vex',
-    name: 'Elanor Vex',
-    portrait: DEFAULT_PORTRAIT,
-    ancestry: 'Humana',
-    clazz: 'Barda',
+    ancestry: 'Humano',
+    clazz: 'Mago',
     level: 3,
-    campaign: 'Círculo de la Aurora',
+    group: 'Sir Diego',
+    campaign: 'Los cultistas y Maria',
     stats: {
-      vida: '28',
-      ataque: '+6',
-      defensa: '14',
-      danio: '1d8 + 2',
-      movimiento: '9 m',
-      alcance: '12 m'
+      vida: '30',
+      ataque: '3',
+      defensa: '13',
+      danio: '3',
+      movimiento: '3',
+      alcance: '3'
     },
-    activeAbilities: [
-      {
-        id: 'armonico-fulgurante',
-        title: 'Arco Armónico Fulgurante',
-        description: 'Descargas sónicas que viboran a través del aire.',
-        features: [
-          'Inflige daño de trueno a dos objetivos alineados',
-          'Empuja 1 metro a las criaturas afectadas'
-        ],
-        cooldown: 3,
-        image: ''
-      }
-    ],
-    passiveAbilities: [
-      {
-        id: 'melodia-inspiradora',
-        title: 'Melodía Inspiradora',
-        description: 'Una canción suave que levanta el ánimo de tus aliados.',
-        features: [
-          'Tus aliados cercanos reciben un bonus a las pruebas sociales',
-          'Recuperas 1 punto de inspiración extra por descanso largo'
-        ],
-        modifiers: [
-          { stat: 'ataque', value: 2 },
-          { stat: 'defensa', value: 1 }
-        ]
-      }
-    ],
-    inventory: [
-      {
-        id: 'laud-de-viaje',
-        title: 'Laúd de viaje',
-        description: 'Instrumento afinado listo para improvisar melodías.',
-        image: ''
-      },
-      {
-        id: 'tonico-brillante',
-        title: 'Tónico brillante',
-        description: 'Poción espumosa que restaura la voz tras largas actuaciones.',
-        image: ''
-      }
-    ]
+    activeAbilities: [],
+    passiveAbilities: [],
+    inventory: []
   }
 ];
 
@@ -382,6 +274,7 @@ function normalizeCharacter(character) {
     ancestry: character?.ancestry?.trim() || '',
     clazz: character?.clazz?.trim() || '',
     level: Number.parseInt(character?.level ?? 1, 10) || 1,
+    group: character?.group?.toString().trim() || '',
     campaign: character?.campaign?.toString().trim() || '',
     stats: normalizedStats,
     activeAbilities,
@@ -471,6 +364,7 @@ function cacheElements() {
   elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
+  elements.heroAffiliation = document.getElementById('heroAffiliation');
   elements.heroPortrait = document.querySelector('.hero-portrait');
   elements.heroToggle = document.getElementById('heroToggle');
   elements.heroToggleIcon = elements.heroToggle?.querySelector('use') ?? null;
@@ -573,14 +467,21 @@ function renderCharacterList() {
       metaParts.push(`Nivel ${character.level}`);
     }
     const metaLine = metaParts.join(' • ');
-    const campaignLine = character.campaign ? `Campaña: ${character.campaign}` : '';
+    const affiliationParts = [];
+    if (character.group) {
+      affiliationParts.push(`Grupo: ${character.group}`);
+    }
+    if (character.campaign) {
+      affiliationParts.push(`Campaña: ${character.campaign}`);
+    }
+    const affiliationLine = affiliationParts.join(' • ');
 
     card.innerHTML = `
       <img src="${portraitSrc}" alt="Retrato de ${character.name}" loading="lazy" />
       <div class="character-meta">
         <h2>${character.name}</h2>
         <p class="character-meta-line">${metaLine || '&nbsp;'}</p>
-        <p class="character-campaign">${campaignLine || '&nbsp;'}</p>
+        <p class="character-campaign">${affiliationLine || '&nbsp;'}</p>
       </div>
       <div class="card-actions">
         <button class="icon-button edit" type="button" title="Editar ${character.name}">
@@ -1566,10 +1467,25 @@ function renderCharacterSheetView(character) {
       .map((part) => part?.trim())
       .filter(Boolean);
     parts.push(`Nivel ${character.level}`);
-    if (character.campaign) {
-      parts.push(character.campaign);
-    }
     elements.heroDetails.textContent = parts.join(' · ');
+  }
+
+  if (elements.heroAffiliation) {
+    const affiliationParts = [];
+    if (character.group) {
+      affiliationParts.push(`Grupo: ${character.group}`);
+    }
+    if (character.campaign) {
+      affiliationParts.push(`Campaña: ${character.campaign}`);
+    }
+    const text = affiliationParts.join(' · ');
+    if (text) {
+      elements.heroAffiliation.textContent = text;
+      elements.heroAffiliation.classList.remove('hidden');
+    } else {
+      elements.heroAffiliation.textContent = '';
+      elements.heroAffiliation.classList.add('hidden');
+    }
   }
 
   if (elements.heroPortrait) {
@@ -1609,6 +1525,7 @@ function createBlankCharacter() {
     ancestry: '',
     clazz: '',
     level: 1,
+    group: '',
     campaign: '',
     portrait: DEFAULT_PORTRAIT,
     stats,
@@ -1656,6 +1573,7 @@ function fillEditorForm(character) {
     characterAncestry: character.ancestry,
     characterClass: character.clazz,
     characterLevel: character.level,
+    characterGroup: character.group,
     characterCampaign: character.campaign
   };
 
@@ -1710,6 +1628,7 @@ function collectFormData(formData) {
     ancestry: formData.get('characterAncestry')?.toString().trim() || '',
     clazz: formData.get('characterClass')?.toString().trim() || '',
     level: Number.parseInt(formData.get('characterLevel'), 10) || 1,
+    group: formData.get('characterGroup')?.toString().trim() || '',
     campaign: formData.get('characterCampaign')?.toString().trim() || '',
     portrait: editorState.portrait || DEFAULT_PORTRAIT,
     stats: {}
