@@ -60,13 +60,38 @@ body {
 }
 
 .nav-button .icon {
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.nav-button .fa-solid,
+.nav-button .fa-regular,
+.nav-button .fa-brands {
+  font-size: 1.55rem;
+  line-height: 1;
 }
 
 .stat-icon .icon {
   width: 1.1rem;
   height: 1.1rem;
+}
+
+.stat-icon .fa-solid,
+.stat-icon .fa-regular,
+.stat-icon .fa-brands {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.stat[data-stat="danio"] .stat-icon .icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.stat[data-stat="danio"] .stat-icon .fa-solid,
+.stat[data-stat="danio"] .stat-icon .fa-regular,
+.stat[data-stat="danio"] .stat-icon .fa-brands {
+  font-size: 1.35rem;
 }
 
 .app {
