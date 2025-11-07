@@ -790,6 +790,40 @@ body {
   background: rgba(0, 0, 0, 0.2);
 }
 
+.notes-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.notes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+.notes-field textarea {
+  min-height: 280px;
+  resize: vertical;
+}
+
+.notes-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notes-screen textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .inventory-card {
   display: grid;
   grid-template-columns: 72px 1fr;
@@ -1155,6 +1189,10 @@ body {
   }
 
   .inventory-screen {
+    padding: 1.25rem;
+  }
+
+  .notes-screen {
     padding: 1.25rem;
   }
 

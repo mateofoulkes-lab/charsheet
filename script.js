@@ -37,7 +37,8 @@ const defaultCharacters = [
     },
     activeAbilities: [],
     passiveAbilities: [],
-    inventory: []
+    inventory: [],
+    notes: ''
   }
 ];
 
@@ -266,6 +267,8 @@ function normalizeCharacter(character) {
       ? character.inventory.map(normalizeInventoryItem).filter(Boolean)
       : []
   );
+  const notesValue = character?.notes;
+  const notes = notesValue === null || notesValue === undefined ? '' : notesValue.toString();
 
   const normalized = {
     id: character?.id || slugify(character?.name || 'pj'),
@@ -279,7 +282,8 @@ function normalizeCharacter(character) {
     stats: normalizedStats,
     activeAbilities,
     passiveAbilities,
-    inventory
+    inventory,
+    notes
   };
 
   return normalized;
@@ -355,11 +359,13 @@ function cacheElements() {
   elements.navSheet = document.querySelector('.bottom-bar [data-action="sheet"]');
   elements.navInventory = document.querySelector('.bottom-bar [data-action="inventory"]');
   elements.navAbilities = document.querySelector('.bottom-bar [data-action="abilities"]');
+  elements.navNotes = document.querySelector('.bottom-bar [data-action="notes"]');
   elements.navButtons = document.querySelectorAll('.bottom-bar .nav-button');
   elements.screenSelect = document.querySelector('[data-screen="select"]');
   elements.screenSheet = document.querySelector('[data-screen="sheet"]');
   elements.screenInventory = document.querySelector('[data-screen="inventory"]');
   elements.screenAbilities = document.querySelector('[data-screen="abilities"]');
+  elements.screenNotes = document.querySelector('[data-screen="notes"]');
   elements.screens = document.querySelectorAll('[data-screen]');
   elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
@@ -420,6 +426,8 @@ function cacheElements() {
   elements.passiveModifierList = document.getElementById('passiveModifierList');
   elements.cancelPassiveAbility = document.getElementById('cancelPassiveAbility');
   elements.closePassiveAbility = document.getElementById('closePassiveAbility');
+  elements.notesTextarea = document.getElementById('notesTextarea');
+  elements.saveNotesButton = document.getElementById('saveNotesButton');
 }
 
 function updateNavState(activeAction) {
@@ -880,6 +888,25 @@ function renderInventoryList() {
   elements.inventoryList.appendChild(fragment);
 }
 
+function renderNotesContent() {
+  if (!elements.notesTextarea) return;
+  const character = getSelectedCharacter();
+  const hasCharacter = Boolean(character);
+
+  elements.notesTextarea.disabled = !hasCharacter;
+  if (elements.saveNotesButton) {
+    elements.saveNotesButton.disabled = !hasCharacter;
+  }
+
+  if (!hasCharacter) {
+    elements.notesTextarea.value = '';
+    return;
+  }
+
+  const noteValue = character.notes;
+  elements.notesTextarea.value = noteValue === null || noteValue === undefined ? '' : noteValue.toString();
+}
+
 function showAbilitiesScreen() {
   renderAbilityLists();
   showScreen('abilities');
@@ -892,6 +919,12 @@ function showInventoryScreen() {
   updateNavState('inventory');
 }
 
+function showNotesScreen() {
+  renderNotesContent();
+  showScreen('notes');
+  updateNavState('notes');
+}
+
 function applyCharacterUpdate(characterId, updater) {
   const index = characters.findIndex((item) => item.id === characterId);
   if (index < 0) return null;
@@ -901,7 +934,8 @@ function applyCharacterUpdate(characterId, updater) {
     stats: { ...current.stats },
     activeAbilities: [...(current.activeAbilities || [])],
     passiveAbilities: [...(current.passiveAbilities || [])],
-    inventory: [...(current.inventory || [])]
+    inventory: [...(current.inventory || [])],
+    notes: current.notes ?? ''
   };
   const maybeUpdated = updater ? updater(draft) : draft;
   const next = maybeUpdated || draft;
@@ -916,6 +950,7 @@ function applyCharacterUpdate(characterId, updater) {
     renderCharacterSheetView(normalized);
     renderAbilityLists();
     renderInventoryList();
+    renderNotesContent();
   }
   return normalized;
 }
@@ -1318,6 +1353,21 @@ function handleInventorySubmit(event) {
   closeInventoryModal();
 }
 
+function handleNotesSave() {
+  if (!elements.notesTextarea) return;
+  if (!selectedCharacterId) {
+    window.alert('Seleccioná un personaje antes de guardar notas.');
+    return;
+  }
+
+  const content = elements.notesTextarea.value ?? '';
+
+  applyCharacterUpdate(selectedCharacterId, (draft) => {
+    draft.notes = content;
+    return draft;
+  });
+}
+
 function handleInventoryListClick(event) {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
@@ -1410,11 +1460,14 @@ function selectCharacter(characterId) {
     updateAbilityControlsAvailability();
     updateInventoryControlsAvailability();
   }
+  renderNotesContent();
   const activeScreen = getActiveScreen();
   if (activeScreen === 'abilities') {
     showAbilitiesScreen();
   } else if (activeScreen === 'inventory') {
     showInventoryScreen();
+  } else if (activeScreen === 'notes') {
+    showNotesScreen();
   } else if (character) {
     showCharacterSheet(characterId);
   }
@@ -1439,6 +1492,7 @@ function deleteCharacter(character) {
   renderCharacterList();
   renderAbilityLists();
   renderInventoryList();
+  renderNotesContent();
 
   const activeScreen = getActiveScreen();
   if (selectedCharacterId) {
@@ -1446,6 +1500,8 @@ function deleteCharacter(character) {
       showAbilitiesScreen();
     } else if (activeScreen === 'inventory') {
       showInventoryScreen();
+    } else if (activeScreen === 'notes') {
+      showNotesScreen();
     } else if (activeScreen === 'sheet') {
       showCharacterSheet(selectedCharacterId);
     }
@@ -1468,24 +1524,6 @@ function renderCharacterSheetView(character) {
       .filter(Boolean);
     parts.push(`Nivel ${character.level}`);
     elements.heroDetails.textContent = parts.join(' · ');
-  }
-
-  if (elements.heroAffiliation) {
-    const affiliationParts = [];
-    if (character.group) {
-      affiliationParts.push(`Grupo: ${character.group}`);
-    }
-    if (character.campaign) {
-      affiliationParts.push(`Campaña: ${character.campaign}`);
-    }
-    const text = affiliationParts.join(' · ');
-    if (text) {
-      elements.heroAffiliation.textContent = text;
-      elements.heroAffiliation.classList.remove('hidden');
-    } else {
-      elements.heroAffiliation.textContent = '';
-      elements.heroAffiliation.classList.add('hidden');
-    }
   }
 
   if (elements.heroPortrait) {
@@ -1531,7 +1569,8 @@ function createBlankCharacter() {
     stats,
     activeAbilities: [],
     passiveAbilities: [],
-    inventory: []
+    inventory: [],
+    notes: ''
   };
 }
 
@@ -1644,10 +1683,12 @@ function collectFormData(formData) {
     payload.activeAbilities = Array.isArray(existing?.activeAbilities) ? existing.activeAbilities : [];
     payload.passiveAbilities = Array.isArray(existing?.passiveAbilities) ? existing.passiveAbilities : [];
     payload.inventory = Array.isArray(existing?.inventory) ? existing.inventory : [];
+    payload.notes = existing?.notes ?? '';
   } else {
     payload.activeAbilities = [];
     payload.passiveAbilities = [];
     payload.inventory = [];
+    payload.notes = '';
   }
 
   if (!payload.id) {
@@ -1710,6 +1751,12 @@ function wireInteractions() {
     }
     showAbilitiesScreen();
   });
+  elements.navNotes?.addEventListener('click', () => {
+    if (!selectedCharacterId && characters[0]) {
+      selectCharacter(characters[0].id);
+    }
+    showNotesScreen();
+  });
 
   if (elements.heroToggle && elements.heroCard) {
     elements.heroToggle.addEventListener('click', () => {
@@ -1755,6 +1802,7 @@ function wireInteractions() {
   elements.activeAbilityForm?.addEventListener('submit', handleActiveAbilitySubmit);
   elements.passiveAbilityForm?.addEventListener('submit', handlePassiveAbilitySubmit);
   elements.inventoryForm?.addEventListener('submit', handleInventorySubmit);
+  elements.saveNotesButton?.addEventListener('click', handleNotesSave);
   elements.activeAbilityImage?.addEventListener('change', handleActiveAbilityImageChange);
   elements.inventoryImage?.addEventListener('change', handleInventoryImageChange);
   elements.clearActiveAbilityImage?.addEventListener('click', () => {
@@ -1842,6 +1890,8 @@ function init() {
     updateAbilityControlsAvailability();
     renderInventoryList();
   }
+
+  renderNotesContent();
 
   wireInteractions();
   updateActiveAbilityPreview();
