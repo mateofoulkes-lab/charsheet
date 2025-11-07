@@ -72,6 +72,20 @@ const defaultCharacters = [
           { stat: 'movimiento', value: 3 }
         ]
       }
+    ],
+    inventory: [
+      {
+        id: 'cuerda-de-seda',
+        title: 'Cuerda de seda',
+        description: '15 metros de cuerda resistente y ligera.',
+        image: ''
+      },
+      {
+        id: 'kit-de-ganzuas',
+        title: 'Kit de ganzúas',
+        description: 'Herramientas precisas para sortear cerraduras complicadas.',
+        image: ''
+      }
     ]
   },
   {
@@ -117,6 +131,20 @@ const defaultCharacters = [
           { stat: 'defensa', value: 1 }
         ]
       }
+    ],
+    inventory: [
+      {
+        id: 'laud-de-viaje',
+        title: 'Laúd de viaje',
+        description: 'Instrumento afinado listo para improvisar melodías.',
+        image: ''
+      },
+      {
+        id: 'tonico-brillante',
+        title: 'Tónico brillante',
+        description: 'Poción espumosa que restaura la voz tras largas actuaciones.',
+        image: ''
+      }
     ]
   }
 ];
@@ -133,6 +161,11 @@ const abilityEditorState = {
   modifiers: []
 };
 let modifierRowCounter = 0;
+
+const inventoryEditorState = {
+  editingId: null,
+  image: ''
+};
 
 let characters = [];
 let selectedCharacterId = null;
@@ -285,6 +318,20 @@ function normalizePassiveAbility(ability) {
   return normalized;
 }
 
+function normalizeInventoryItem(item) {
+  if (!item) return null;
+  const title = item.title?.toString().trim() || 'Elemento sin título';
+  const description = item.description?.toString().trim() || '';
+  const image = item.image?.toString().trim() || '';
+  const id = item.id?.toString().trim() || slugify(title || 'item');
+  return {
+    id,
+    title,
+    description,
+    image
+  };
+}
+
 function dedupeById(list) {
   if (!Array.isArray(list)) return [];
   const seen = new Set();
@@ -322,6 +369,11 @@ function normalizeCharacter(character) {
       ? character.passiveAbilities.map(normalizePassiveAbility).filter(Boolean)
       : []
   );
+  const inventory = dedupeById(
+    Array.isArray(character?.inventory)
+      ? character.inventory.map(normalizeInventoryItem).filter(Boolean)
+      : []
+  );
 
   const normalized = {
     id: character?.id || slugify(character?.name || 'pj'),
@@ -333,7 +385,8 @@ function normalizeCharacter(character) {
     campaign: character?.campaign?.toString().trim() || '',
     stats: normalizedStats,
     activeAbilities,
-    passiveAbilities
+    passiveAbilities,
+    inventory
   };
 
   return normalized;
@@ -391,15 +444,28 @@ function ensureUniqueAbilityId(list, baseId) {
   return candidate;
 }
 
+function ensureUniqueInventoryId(list, baseId) {
+  const existing = new Set((list || []).map((item) => item.id));
+  let candidate = baseId;
+  let suffix = 1;
+  while (existing.has(candidate)) {
+    candidate = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
   elements.navBack = document.querySelector('.bottom-bar [data-action="back"]');
   elements.navSheet = document.querySelector('.bottom-bar [data-action="sheet"]');
+  elements.navInventory = document.querySelector('.bottom-bar [data-action="inventory"]');
   elements.navAbilities = document.querySelector('.bottom-bar [data-action="abilities"]');
   elements.navButtons = document.querySelectorAll('.bottom-bar .nav-button');
   elements.screenSelect = document.querySelector('[data-screen="select"]');
   elements.screenSheet = document.querySelector('[data-screen="sheet"]');
+  elements.screenInventory = document.querySelector('[data-screen="inventory"]');
   elements.screenAbilities = document.querySelector('[data-screen="abilities"]');
   elements.screens = document.querySelectorAll('[data-screen]');
   elements.heroCard = document.querySelector('.hero-card');
@@ -418,6 +484,20 @@ function cacheElements() {
   elements.clearPortrait = document.getElementById('clearPortrait');
   elements.cancelEditor = document.getElementById('cancelEditor');
   elements.closeEditor = document.getElementById('closeEditor');
+  elements.addInventoryItem = document.getElementById('addInventoryItem');
+  elements.inventoryList = document.getElementById('inventoryList');
+  elements.inventoryModal = document.getElementById('inventoryModal');
+  elements.inventoryModalTitle = document.getElementById('inventoryModalTitle');
+  elements.inventoryBackdrop = elements.inventoryModal?.querySelector('.modal-backdrop') ?? null;
+  elements.inventoryForm = document.getElementById('inventoryForm');
+  elements.inventoryTitle = document.getElementById('inventoryTitle');
+  elements.inventoryDescription = document.getElementById('inventoryDescription');
+  elements.inventoryImage = document.getElementById('inventoryImage');
+  elements.inventoryPreview = document.getElementById('inventoryPreview');
+  elements.inventoryPreviewPlaceholder = document.getElementById('inventoryPreviewPlaceholder');
+  elements.clearInventoryImage = document.getElementById('clearInventoryImage');
+  elements.cancelInventory = document.getElementById('cancelInventory');
+  elements.closeInventoryModal = document.getElementById('closeInventoryModal');
   elements.addActiveAbility = document.getElementById('addActiveAbility');
   elements.addPassiveAbility = document.getElementById('addPassiveAbility');
   elements.activeAbilityList = document.getElementById('activeAbilityList');
@@ -586,6 +666,13 @@ function updateAbilityControlsAvailability() {
   }
 }
 
+function updateInventoryControlsAvailability() {
+  const hasCharacter = Boolean(getSelectedCharacter());
+  if (elements.addInventoryItem) {
+    elements.addInventoryItem.disabled = !hasCharacter;
+  }
+}
+
 function createAbilityCardElement(ability, type) {
   const safeType = type === 'passive' ? 'passive' : 'active';
   const titleText = ability?.title?.toString().trim() || 'Habilidad sin título';
@@ -747,6 +834,77 @@ function createAbilityCardElement(ability, type) {
   return card;
 }
 
+function createInventoryCardElement(item) {
+  const title = item?.title?.toString().trim() || 'Elemento sin título';
+  const description = item?.description?.toString().trim() || '';
+  const imageSrc = item?.image?.toString().trim() || '';
+  const itemId = item?.id?.toString().trim() || slugify(title || 'item');
+
+  const card = document.createElement('article');
+  card.className = 'inventory-card';
+  card.dataset.id = itemId;
+
+  const media = document.createElement('div');
+  media.className = 'inventory-card-media';
+  if (imageSrc) {
+    const img = document.createElement('img');
+    img.src = withVersion(imageSrc);
+    img.alt = `Imagen de ${title}`;
+    media.appendChild(img);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'inventory-card-placeholder';
+    placeholder.innerHTML = '<i class="fa-solid fa-circle" aria-hidden="true"></i>';
+    media.appendChild(placeholder);
+  }
+  card.appendChild(media);
+
+  const body = document.createElement('div');
+  body.className = 'inventory-card-body';
+
+  const header = document.createElement('header');
+  header.className = 'inventory-card-header';
+  const heading = document.createElement('h4');
+  heading.textContent = title;
+  header.appendChild(heading);
+  body.appendChild(header);
+
+  const descriptionElement = document.createElement('p');
+  descriptionElement.className = 'inventory-card-description';
+  if (description) {
+    descriptionElement.textContent = description;
+  } else {
+    descriptionElement.textContent = 'Sin descripción';
+    descriptionElement.classList.add('empty');
+  }
+  body.appendChild(descriptionElement);
+
+  card.appendChild(body);
+
+  const actions = document.createElement('footer');
+  actions.className = 'inventory-card-actions';
+
+  const editButton = document.createElement('button');
+  editButton.type = 'button';
+  editButton.className = 'icon-button edit';
+  editButton.dataset.action = 'edit';
+  editButton.title = `Editar ${title}`;
+  editButton.innerHTML = `${iconMarkup('pen-to-square')}<span>Editar</span>`;
+  actions.appendChild(editButton);
+
+  const deleteButton = document.createElement('button');
+  deleteButton.type = 'button';
+  deleteButton.className = 'icon-button delete';
+  deleteButton.dataset.action = 'delete';
+  deleteButton.title = `Eliminar ${title}`;
+  deleteButton.innerHTML = `${iconMarkup('trash')}<span>Borrar</span>`;
+  actions.appendChild(deleteButton);
+
+  card.appendChild(actions);
+
+  return card;
+}
+
 function renderAbilityLists() {
   updateAbilityControlsAvailability();
   const character = getSelectedCharacter();
@@ -794,10 +952,43 @@ function renderAbilityLists() {
   elements.passiveAbilityList.appendChild(passiveFragment);
 }
 
+function renderInventoryList() {
+  updateInventoryControlsAvailability();
+  if (!elements.inventoryList) return;
+  const character = getSelectedCharacter();
+  if (!character) {
+    elements.inventoryList.innerHTML =
+      '<p class="inventory-empty-state">Seleccioná un personaje para administrar su inventario.</p>';
+    return;
+  }
+
+  const items = Array.isArray(character.inventory) ? character.inventory : [];
+  const fragment = document.createDocumentFragment();
+  if (items.length === 0) {
+    const emptyMessage = document.createElement('p');
+    emptyMessage.className = 'inventory-empty-state';
+    emptyMessage.textContent = 'No hay objetos en el inventario.';
+    fragment.appendChild(emptyMessage);
+  } else {
+    items.forEach((item) => {
+      if (!item) return;
+      fragment.appendChild(createInventoryCardElement(item));
+    });
+  }
+  elements.inventoryList.innerHTML = '';
+  elements.inventoryList.appendChild(fragment);
+}
+
 function showAbilitiesScreen() {
   renderAbilityLists();
   showScreen('abilities');
   updateNavState('abilities');
+}
+
+function showInventoryScreen() {
+  renderInventoryList();
+  showScreen('inventory');
+  updateNavState('inventory');
 }
 
 function applyCharacterUpdate(characterId, updater) {
@@ -808,7 +999,8 @@ function applyCharacterUpdate(characterId, updater) {
     ...current,
     stats: { ...current.stats },
     activeAbilities: [...(current.activeAbilities || [])],
-    passiveAbilities: [...(current.passiveAbilities || [])]
+    passiveAbilities: [...(current.passiveAbilities || [])],
+    inventory: [...(current.inventory || [])]
   };
   const maybeUpdated = updater ? updater(draft) : draft;
   const next = maybeUpdated || draft;
@@ -822,6 +1014,7 @@ function applyCharacterUpdate(characterId, updater) {
   if (selectedCharacterId === characterId) {
     renderCharacterSheetView(normalized);
     renderAbilityLists();
+    renderInventoryList();
   }
   return normalized;
 }
@@ -1121,6 +1314,141 @@ function handlePassiveAbilitySubmit(event) {
   closePassiveAbilityModal();
 }
 
+function updateInventoryPreview() {
+  if (!elements.inventoryPreview) return;
+  const source = inventoryEditorState.image || '';
+  if (source) {
+    elements.inventoryPreview.src = withVersion(source);
+    elements.inventoryPreview.classList.remove('hidden');
+    elements.inventoryPreviewPlaceholder?.classList.add('hidden');
+  } else {
+    elements.inventoryPreview.src = '';
+    elements.inventoryPreview.classList.add('hidden');
+    elements.inventoryPreviewPlaceholder?.classList.remove('hidden');
+  }
+}
+
+function closeInventoryModal() {
+  if (!elements.inventoryModal) return;
+  elements.inventoryModal.classList.add('hidden');
+  elements.inventoryForm?.reset();
+  if (elements.inventoryImage) {
+    elements.inventoryImage.value = '';
+  }
+  inventoryEditorState.editingId = null;
+  inventoryEditorState.image = '';
+  updateInventoryPreview();
+  syncBodyModalState();
+}
+
+function openInventoryModal(item = null) {
+  if (!elements.inventoryModal) return;
+  inventoryEditorState.editingId = item?.id ?? null;
+  inventoryEditorState.image = item?.image || '';
+  elements.inventoryForm?.reset();
+  if (elements.inventoryTitle) {
+    elements.inventoryTitle.value = item?.title ?? '';
+  }
+  if (elements.inventoryDescription) {
+    elements.inventoryDescription.value = item?.description ?? '';
+  }
+  if (elements.inventoryModalTitle) {
+    elements.inventoryModalTitle.textContent = item ? 'Editar item' : 'Nuevo item';
+  }
+  updateInventoryPreview();
+  elements.inventoryModal.classList.remove('hidden');
+  syncBodyModalState();
+  elements.inventoryTitle?.focus({ preventScroll: true });
+}
+
+function handleInventoryImageChange(event) {
+  const [file] = event.target.files || [];
+  if (!file) return;
+  if (file.type !== 'image/png') {
+    window.alert('La imagen debe ser un archivo PNG.');
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (loadEvent) => {
+    inventoryEditorState.image = loadEvent.target?.result || '';
+    updateInventoryPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleInventorySubmit(event) {
+  event.preventDefault();
+  if (!elements.inventoryForm) return;
+  const formData = new FormData(elements.inventoryForm);
+  const title = formData.get('title')?.toString().trim();
+  if (!title) {
+    window.alert('El título del item es obligatorio.');
+    return;
+  }
+  const description = formData.get('description')?.toString().trim() || '';
+  const characterId = selectedCharacterId;
+  if (!characterId) {
+    window.alert('Seleccioná un personaje antes de administrar el inventario.');
+    return;
+  }
+  const baseId = slugify(title || 'item');
+
+  applyCharacterUpdate(characterId, (draft) => {
+    if (!Array.isArray(draft.inventory)) {
+      draft.inventory = [];
+    }
+    const item = {
+      id: inventoryEditorState.editingId || ensureUniqueInventoryId(draft.inventory, `${baseId}-item`),
+      title,
+      description,
+      image: inventoryEditorState.image || ''
+    };
+    const list = draft.inventory;
+    const index = list.findIndex((entry) => entry.id === item.id);
+    if (index >= 0) {
+      list[index] = item;
+    } else {
+      list.push(item);
+    }
+    return draft;
+  });
+
+  closeInventoryModal();
+}
+
+function handleInventoryListClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const action = button.dataset.action;
+  if (!['edit', 'delete'].includes(action)) return;
+  const card = button.closest('.inventory-card');
+  if (!card) return;
+  const itemId = card.dataset.id;
+  const character = getSelectedCharacter();
+  if (!character) {
+    window.alert('Seleccioná un personaje para administrar el inventario.');
+    return;
+  }
+  const items = Array.isArray(character.inventory) ? character.inventory : [];
+  const item = items.find((entry) => entry?.id === itemId);
+  if (!item) return;
+
+  if (action === 'edit') {
+    openInventoryModal(item);
+    return;
+  }
+
+  if (action === 'delete') {
+    const confirmed = window.confirm(`¿Seguro que querés eliminar "${item.title}"?`);
+    if (!confirmed) return;
+    applyCharacterUpdate(character.id, (draft) => {
+      draft.inventory = (draft.inventory || []).filter((entry) => entry.id !== itemId);
+      return draft;
+    });
+  }
+}
+
 function handleAbilityListClick(event) {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
@@ -1176,10 +1504,16 @@ function selectCharacter(characterId) {
   const character = getSelectedCharacter();
   if (character) {
     renderAbilityLists();
+    renderInventoryList();
+  } else {
+    updateAbilityControlsAvailability();
+    updateInventoryControlsAvailability();
   }
   const activeScreen = getActiveScreen();
   if (activeScreen === 'abilities') {
     showAbilitiesScreen();
+  } else if (activeScreen === 'inventory') {
+    showInventoryScreen();
   } else if (character) {
     showCharacterSheet(characterId);
   }
@@ -1203,17 +1537,21 @@ function deleteCharacter(character) {
   saveSelectedCharacterId(selectedCharacterId ?? '');
   renderCharacterList();
   renderAbilityLists();
+  renderInventoryList();
 
   const activeScreen = getActiveScreen();
   if (selectedCharacterId) {
     if (activeScreen === 'abilities') {
       showAbilitiesScreen();
+    } else if (activeScreen === 'inventory') {
+      showInventoryScreen();
     } else if (activeScreen === 'sheet') {
       showCharacterSheet(selectedCharacterId);
     }
   } else {
     showScreen('select');
     updateNavState(null);
+    updateInventoryControlsAvailability();
   }
 }
 
@@ -1275,7 +1613,8 @@ function createBlankCharacter() {
     portrait: DEFAULT_PORTRAIT,
     stats,
     activeAbilities: [],
-    passiveAbilities: []
+    passiveAbilities: [],
+    inventory: []
   };
 }
 
@@ -1385,9 +1724,11 @@ function collectFormData(formData) {
     const existing = characters.find((item) => item.id === payload.id);
     payload.activeAbilities = Array.isArray(existing?.activeAbilities) ? existing.activeAbilities : [];
     payload.passiveAbilities = Array.isArray(existing?.passiveAbilities) ? existing.passiveAbilities : [];
+    payload.inventory = Array.isArray(existing?.inventory) ? existing.inventory : [];
   } else {
     payload.activeAbilities = [];
     payload.passiveAbilities = [];
+    payload.inventory = [];
   }
 
   if (!payload.id) {
@@ -1438,6 +1779,12 @@ function wireInteractions() {
       showCharacterSheet(selectedCharacterId);
     }
   });
+  elements.navInventory?.addEventListener('click', () => {
+    if (!selectedCharacterId && characters[0]) {
+      selectCharacter(characters[0].id);
+    }
+    showInventoryScreen();
+  });
   elements.navAbilities?.addEventListener('click', () => {
     if (!selectedCharacterId && characters[0]) {
       selectCharacter(characters[0].id);
@@ -1479,9 +1826,18 @@ function wireInteractions() {
     }
     openPassiveAbilityModal();
   });
+  elements.addInventoryItem?.addEventListener('click', () => {
+    if (!selectedCharacterId) {
+      window.alert('Seleccioná un personaje antes de agregar objetos.');
+      return;
+    }
+    openInventoryModal();
+  });
   elements.activeAbilityForm?.addEventListener('submit', handleActiveAbilitySubmit);
   elements.passiveAbilityForm?.addEventListener('submit', handlePassiveAbilitySubmit);
+  elements.inventoryForm?.addEventListener('submit', handleInventorySubmit);
   elements.activeAbilityImage?.addEventListener('change', handleActiveAbilityImageChange);
+  elements.inventoryImage?.addEventListener('change', handleInventoryImageChange);
   elements.clearActiveAbilityImage?.addEventListener('click', () => {
     abilityEditorState.image = '';
     if (elements.activeAbilityImage) {
@@ -1489,16 +1845,27 @@ function wireInteractions() {
     }
     updateActiveAbilityPreview();
   });
+  elements.clearInventoryImage?.addEventListener('click', () => {
+    inventoryEditorState.image = '';
+    if (elements.inventoryImage) {
+      elements.inventoryImage.value = '';
+    }
+    updateInventoryPreview();
+  });
   elements.cancelActiveAbility?.addEventListener('click', closeActiveAbilityModal);
   elements.closeActiveAbility?.addEventListener('click', closeActiveAbilityModal);
   elements.activeAbilityBackdrop?.addEventListener('click', closeActiveAbilityModal);
   elements.cancelPassiveAbility?.addEventListener('click', closePassiveAbilityModal);
   elements.closePassiveAbility?.addEventListener('click', closePassiveAbilityModal);
   elements.passiveAbilityBackdrop?.addEventListener('click', closePassiveAbilityModal);
+  elements.cancelInventory?.addEventListener('click', closeInventoryModal);
+  elements.closeInventoryModal?.addEventListener('click', closeInventoryModal);
+  elements.inventoryBackdrop?.addEventListener('click', closeInventoryModal);
   elements.addPassiveModifier?.addEventListener('click', () => addPassiveModifierRow());
   elements.passiveModifierList?.addEventListener('click', handlePassiveModifierListClick);
   elements.activeAbilityList?.addEventListener('click', handleAbilityListClick);
   elements.passiveAbilityList?.addEventListener('click', handleAbilityListClick);
+  elements.inventoryList?.addEventListener('click', handleInventoryListClick);
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -1506,6 +1873,8 @@ function wireInteractions() {
       closeActiveAbilityModal();
     } else if (!elements.passiveAbilityModal?.classList.contains('hidden')) {
       closePassiveAbilityModal();
+    } else if (!elements.inventoryModal?.classList.contains('hidden')) {
+      closeInventoryModal();
     } else if (!elements.editorModal?.classList.contains('hidden')) {
       closeCharacterEditor();
     }
@@ -1547,14 +1916,17 @@ function init() {
   if (selectedCharacterId) {
     showCharacterSheet(selectedCharacterId);
     renderAbilityLists();
+    renderInventoryList();
   } else {
     showScreen('select');
     updateNavState(null);
     updateAbilityControlsAvailability();
+    renderInventoryList();
   }
 
   wireInteractions();
   updateActiveAbilityPreview();
+  updateInventoryPreview();
 }
 
 if (document.readyState === 'loading') {

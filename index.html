@@ -139,7 +139,7 @@
   </svg>
   <div id="app" class="app">
     <div id="fa-check" style="padding:8px">
-      <i class="fa-solid fa-dragon"></i> CharSheet Companion
+      <i class="fa-solid fa-dragon"></i> Prueba de icono
     </div>
     <div class="character-select" data-screen="select">
       <header class="select-header">
@@ -248,6 +248,12 @@
           </div>
         </div>
       </section>
+    </div>
+    <div class="inventory-screen hidden" data-screen="inventory">
+      <div class="inventory-header">
+        <button type="button" class="btn primary" id="addInventoryItem">Agregar nuevo item</button>
+      </div>
+      <div class="inventory-list" id="inventoryList" aria-live="polite"></div>
     </div>
     <div class="abilities-screen hidden" data-screen="abilities">
       <div class="abilities-header">
@@ -521,6 +527,60 @@
         </section>
         <footer class="form-actions">
           <button type="button" class="btn secondary" id="cancelPassiveAbility">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="inventoryModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="inventoryModalTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="inventory"></div>
+    <div class="modal-dialog ability-modal">
+      <header class="modal-header">
+        <h2 id="inventoryModalTitle">Nuevo item</h2>
+        <button type="button" class="icon-button close" id="closeInventoryModal" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <form id="inventoryForm" class="inventory-form" autocomplete="off">
+        <div class="form-grid">
+          <label class="form-field stacked">
+            Título
+            <input id="inventoryTitle" name="title" type="text" required />
+          </label>
+          <label class="form-field stacked">
+            Descripción
+            <textarea id="inventoryDescription" name="description" rows="4"></textarea>
+          </label>
+        </div>
+        <div class="inventory-image-field">
+          <div class="inventory-image-frame">
+            <img id="inventoryPreview" alt="Vista previa del item" class="hidden" />
+            <div class="inventory-image-placeholder" id="inventoryPreviewPlaceholder">
+              <i class="fa-solid fa-circle" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div class="inventory-image-actions">
+            <label class="btn primary file-btn">
+              <svg class="icon icon-upload" aria-hidden="true" focusable="false">
+                <use href="#icon-upload" xlink:href="#icon-upload"></use>
+              </svg>
+              Subir PNG
+              <input id="inventoryImage" type="file" accept="image/png" hidden />
+            </label>
+            <button type="button" class="btn secondary" id="clearInventoryImage">Quitar imagen</button>
+          </div>
+        </div>
+        <footer class="form-actions">
+          <button type="button" class="btn secondary" id="cancelInventory">Cancelar</button>
           <button type="submit" class="btn primary">Guardar</button>
         </footer>
       </form>

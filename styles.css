@@ -674,8 +674,13 @@ body {
 
 .abilities-header {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.75rem;
+}
+
+.abilities-header .btn {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .ability-columns {
@@ -729,6 +734,170 @@ body {
 
 .ability-list::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.2);
+}
+
+.inventory-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  height: 100%;
+  overflow: hidden;
+  flex: 1;
+}
+
+.inventory-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inventory-header .btn {
+  align-self: flex-start;
+}
+
+.inventory-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.inventory-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.inventory-list::-webkit-scrollbar-thumb {
+  background: rgba(244, 200, 106, 0.3);
+  border-radius: 999px;
+}
+
+.inventory-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.inventory-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(244, 200, 106, 0.2);
+  background: rgba(12, 9, 6, 0.85);
+  box-shadow: inset 0 1px 0 rgba(244, 200, 106, 0.12);
+}
+
+.inventory-card-media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inventory-card-media img,
+.inventory-card-placeholder {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.inventory-card-placeholder {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(244, 200, 106, 0.2), rgba(82, 53, 17, 0.45));
+  color: var(--color-gold-bright);
+  font-size: 1.4rem;
+}
+
+.inventory-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inventory-card-header h4 {
+  margin: 0;
+  font-size: 1.02rem;
+  color: var(--color-gold-bright);
+}
+
+.inventory-card-description {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.inventory-card-description.empty {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.inventory-card-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  justify-content: flex-end;
+}
+
+.inventory-empty-state {
+  margin: 0;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.inventory-image-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inventory-form {
+  padding: 0 1.5rem 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.inventory-form .form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.inventory-image-frame {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  border: 1px solid rgba(244, 200, 106, 0.2);
+  background: rgba(12, 9, 6, 0.85);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.inventory-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inventory-image-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--color-gold-bright);
+  font-size: 2rem;
+}
+
+.inventory-image-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inventory-image-placeholder.hidden,
+.inventory-image-frame img.hidden {
+  display: none;
 }
 
 .ability-card {
@@ -972,6 +1141,10 @@ body {
     padding: 1.25rem;
   }
 
+  .inventory-screen {
+    padding: 1.25rem;
+  }
+
   .ability-columns {
     grid-template-columns: 1fr;
   }
@@ -985,6 +1158,17 @@ body {
   .ability-image.placeholder {
     width: 64px;
     height: 64px;
+  }
+
+  .inventory-card {
+    grid-template-columns: 56px 1fr;
+    gap: 0.75rem;
+  }
+
+  .inventory-card-media img,
+  .inventory-card-placeholder {
+    width: 56px;
+    height: 56px;
   }
 
   .ability-image-field {
