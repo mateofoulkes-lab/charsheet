@@ -615,6 +615,11 @@ function fillEditorForm(character) {
       field.value = value;
     }
   });
+  header.appendChild(removeBtn);
+  abilityEl.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.className = 'form-grid two-col';
 
   STAT_KEYS.forEach((key) => {
     const baseField = document.getElementById(`stat-${key}-base`);
@@ -626,6 +631,19 @@ function fillEditorForm(character) {
       deltaField.value = isNewCharacter ? '' : character.stats[key]?.delta ?? '';
     }
   });
+  nameLabel.appendChild(nameInput);
+  grid.appendChild(nameLabel);
+
+  const iconLabel = document.createElement('label');
+  iconLabel.className = 'form-field stacked';
+  iconLabel.textContent = 'Icono (clase Font Awesome)';
+  const iconInput = document.createElement('input');
+  iconInput.type = 'text';
+  iconInput.dataset.field = 'ability-icon';
+  iconInput.placeholder = 'fa-solid fa-star';
+  iconInput.value = normalized.icon;
+  iconLabel.appendChild(iconInput);
+  grid.appendChild(iconLabel);
 
   if (elements.portraitPreview) {
     updatePortraitPreview();
