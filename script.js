@@ -5,6 +5,17 @@ const DEFAULT_PORTRAIT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAAAAAAAAAAAAAAAAD4GlrxAAE9eEIAAAAASUVORK5CYII=';
 
 const STAT_KEYS = ['vida', 'ataque', 'defensa', 'danio', 'movimiento', 'alcance'];
+const STAT_LABELS = {
+  vida: 'Vida',
+  ataque: 'Ataque',
+  defensa: 'Defensa',
+  danio: 'Daño',
+  movimiento: 'Movimiento',
+  alcance: 'Alcance'
+};
+const DEFAULT_ABILITY_IMAGE =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIj48cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgcng9IjE2IiBmaWxsPSIlMjMyYjIxM2EiLz48cGF0aCBkPSJNNjAgMThsMTIuOSAyNi4yIDI4LjkgNC4yLTIxIDE5LjYgNSAyOC41TDYwIDgzLjIgMzQuMiA5Ni41bDUtMjguNS0yMS0xOS42IDI4LjktNC4yeiIgZmlsbD0iJTIzZjRjODZhIiBvcGFjaXR5PSIwLjkiLz48L3N2Zz4=';
+const MAX_DISPLAY_COOLDOWN = 12;
 
 const defaultCharacters = [
   {
@@ -22,7 +33,46 @@ const defaultCharacters = [
       danio: '2d6 + 3',
       movimiento: '12 m',
       alcance: '9 m'
-    }
+    },
+    activeAbilities: [
+      {
+        id: 'golpe-sombrio',
+        title: 'Golpe Sombrío',
+        description: 'Un tajo veloz cubierto de energía sombría.',
+        features: [
+          'Ventaja en la tirada de ataque si actúas primero',
+          'Añade +2d6 de daño cuando atacas desde sigilo'
+        ],
+        cooldown: 2,
+        image: DEFAULT_ABILITY_IMAGE
+      },
+      {
+        id: 'bengala-hipnotica',
+        title: 'Bengala Hipnótica',
+        description: 'Una luz danzante que confunde a tus rivales.',
+        features: [
+          'Los enemigos cercanos realizan tiradas de Sabiduría con desventaja',
+          'Puedes reposicionarte 3 metros sin provocar ataques de oportunidad'
+        ],
+        cooldown: 4,
+        image: ''
+      }
+    ],
+    passiveAbilities: [
+      {
+        id: 'instinto-furtivo',
+        title: 'Instinto Furtivo',
+        description: 'Tu entrenamiento constante mejora tus reflejos.',
+        features: [
+          'Bonificación a la iniciativa',
+          'Puedes repetir una tirada de sigilo fallida por descanso'
+        ],
+        modifiers: [
+          { stat: 'ataque', value: 1 },
+          { stat: 'movimiento', value: 3 }
+        ]
+      }
+    ]
   },
   {
     id: 'elanor-vex',
@@ -39,7 +89,35 @@ const defaultCharacters = [
       danio: '1d8 + 2',
       movimiento: '9 m',
       alcance: '12 m'
-    }
+    },
+    activeAbilities: [
+      {
+        id: 'armonico-fulgurante',
+        title: 'Arco Armónico Fulgurante',
+        description: 'Descargas sónicas que viboran a través del aire.',
+        features: [
+          'Inflige daño de trueno a dos objetivos alineados',
+          'Empuja 1 metro a las criaturas afectadas'
+        ],
+        cooldown: 3,
+        image: ''
+      }
+    ],
+    passiveAbilities: [
+      {
+        id: 'melodia-inspiradora',
+        title: 'Melodía Inspiradora',
+        description: 'Una canción suave que levanta el ánimo de tus aliados.',
+        features: [
+          'Tus aliados cercanos reciben un bonus a las pruebas sociales',
+          'Recuperas 1 punto de inspiración extra por descanso largo'
+        ],
+        modifiers: [
+          { stat: 'ataque', value: 2 },
+          { stat: 'defensa', value: 1 }
+        ]
+      }
+    ]
   }
 ];
 
@@ -48,9 +126,21 @@ const editorState = {
   editingId: null,
   portrait: DEFAULT_PORTRAIT
 };
+const abilityEditorState = {
+  type: null,
+  editingId: null,
+  image: '',
+  modifiers: []
+};
+let modifierRowCounter = 0;
 
 let characters = [];
 let selectedCharacterId = null;
+
+function getSelectedCharacter() {
+  if (!selectedCharacterId) return null;
+  return characters.find((item) => item.id === selectedCharacterId) ?? null;
+}
 
 function iconMarkup(name, { className = '', label = null } = {}) {
   if (!name) return '';
@@ -120,6 +210,94 @@ function slugify(text) {
   );
 }
 
+function escapeHtml(text) {
+  if (text === null || text === undefined) {
+    return '';
+  }
+  return text
+    .toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeFeatureList(value) {
+  if (!value) return [];
+  const list = Array.isArray(value)
+    ? value
+    : value
+        .toString()
+        .split(/\r?\n/);
+  return list
+    .map((item) => item?.toString().trim())
+    .filter((item) => item && item.length > 0);
+}
+
+function normalizeAbilityModifier(modifier) {
+  if (!modifier) return null;
+  const stat = modifier.stat;
+  if (!STAT_KEYS.includes(stat)) {
+    return null;
+  }
+  const value = Number.parseInt(modifier.value, 10);
+  if (Number.isNaN(value)) {
+    return null;
+  }
+  return { stat, value };
+}
+
+function normalizeActiveAbility(ability) {
+  if (!ability) return null;
+  const title = ability.title?.toString().trim();
+  if (!title) {
+    return null;
+  }
+  const cooldown = Number.parseInt(ability.cooldown, 10);
+  const normalized = {
+    id: ability.id?.toString().trim() || slugify(title),
+    title,
+    description: ability.description?.toString().trim() || '',
+    features: normalizeFeatureList(ability.features),
+    cooldown: Number.isFinite(cooldown) && !Number.isNaN(cooldown) && cooldown > 0 ? cooldown : 0,
+    image: ability.image?.toString().trim() || ''
+  };
+  return normalized;
+}
+
+function normalizePassiveAbility(ability) {
+  if (!ability) return null;
+  const title = ability.title?.toString().trim();
+  if (!title) {
+    return null;
+  }
+  const modifiers = Array.isArray(ability.modifiers)
+    ? ability.modifiers.map(normalizeAbilityModifier).filter(Boolean)
+    : [];
+  const normalized = {
+    id: ability.id?.toString().trim() || slugify(title),
+    title,
+    description: ability.description?.toString().trim() || '',
+    features: normalizeFeatureList(ability.features),
+    modifiers
+  };
+  return normalized;
+}
+
+function dedupeById(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const result = [];
+  list.forEach((item) => {
+    if (!item || !item.id) return;
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    result.push(item);
+  });
+  return result;
+}
+
 function normalizeCharacter(character) {
   const normalizedStats = {};
   STAT_KEYS.forEach((key) => {
@@ -134,6 +312,17 @@ function normalizeCharacter(character) {
     portrait = DEFAULT_PORTRAIT;
   }
 
+  const activeAbilities = dedupeById(
+    Array.isArray(character?.activeAbilities)
+      ? character.activeAbilities.map(normalizeActiveAbility).filter(Boolean)
+      : []
+  );
+  const passiveAbilities = dedupeById(
+    Array.isArray(character?.passiveAbilities)
+      ? character.passiveAbilities.map(normalizePassiveAbility).filter(Boolean)
+      : []
+  );
+
   const normalized = {
     id: character?.id || slugify(character?.name || 'pj'),
     name: character?.name?.trim() || 'Personaje sin nombre',
@@ -142,7 +331,9 @@ function normalizeCharacter(character) {
     clazz: character?.clazz?.trim() || '',
     level: Number.parseInt(character?.level ?? 1, 10) || 1,
     campaign: character?.campaign?.toString().trim() || '',
-    stats: normalizedStats
+    stats: normalizedStats,
+    activeAbilities,
+    passiveAbilities
   };
 
   return normalized;
@@ -189,14 +380,28 @@ function ensureUniqueId(baseId) {
   return candidate;
 }
 
+function ensureUniqueAbilityId(list, baseId) {
+  const existing = new Set((list || []).map((item) => item.id));
+  let candidate = baseId;
+  let suffix = 1;
+  while (existing.has(candidate)) {
+    candidate = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
   elements.navBack = document.querySelector('.bottom-bar [data-action="back"]');
   elements.navSheet = document.querySelector('.bottom-bar [data-action="sheet"]');
+  elements.navAbilities = document.querySelector('.bottom-bar [data-action="abilities"]');
   elements.navButtons = document.querySelectorAll('.bottom-bar .nav-button');
   elements.screenSelect = document.querySelector('[data-screen="select"]');
   elements.screenSheet = document.querySelector('[data-screen="sheet"]');
+  elements.screenAbilities = document.querySelector('[data-screen="abilities"]');
+  elements.screens = document.querySelectorAll('[data-screen]');
   elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
@@ -213,6 +418,34 @@ function cacheElements() {
   elements.clearPortrait = document.getElementById('clearPortrait');
   elements.cancelEditor = document.getElementById('cancelEditor');
   elements.closeEditor = document.getElementById('closeEditor');
+  elements.addActiveAbility = document.getElementById('addActiveAbility');
+  elements.addPassiveAbility = document.getElementById('addPassiveAbility');
+  elements.activeAbilityList = document.getElementById('activeAbilityList');
+  elements.passiveAbilityList = document.getElementById('passiveAbilityList');
+  elements.activeAbilityModal = document.getElementById('activeAbilityModal');
+  elements.passiveAbilityModal = document.getElementById('passiveAbilityModal');
+  elements.activeAbilityModalTitle = document.getElementById('activeAbilityModalTitle');
+  elements.passiveAbilityModalTitle = document.getElementById('passiveAbilityModalTitle');
+  elements.activeAbilityBackdrop = elements.activeAbilityModal?.querySelector('.modal-backdrop') ?? null;
+  elements.passiveAbilityBackdrop = elements.passiveAbilityModal?.querySelector('.modal-backdrop') ?? null;
+  elements.activeAbilityForm = document.getElementById('activeAbilityForm');
+  elements.passiveAbilityForm = document.getElementById('passiveAbilityForm');
+  elements.activeAbilityTitle = document.getElementById('activeAbilityTitle');
+  elements.activeAbilityDescription = document.getElementById('activeAbilityDescription');
+  elements.activeAbilityFeatures = document.getElementById('activeAbilityFeatures');
+  elements.activeAbilityCooldown = document.getElementById('activeAbilityCooldown');
+  elements.activeAbilityPreview = document.getElementById('activeAbilityPreview');
+  elements.activeAbilityImage = document.getElementById('activeAbilityImage');
+  elements.clearActiveAbilityImage = document.getElementById('clearActiveAbilityImage');
+  elements.cancelActiveAbility = document.getElementById('cancelActiveAbility');
+  elements.closeActiveAbility = document.getElementById('closeActiveAbility');
+  elements.passiveAbilityTitle = document.getElementById('passiveAbilityTitle');
+  elements.passiveAbilityDescription = document.getElementById('passiveAbilityDescription');
+  elements.passiveAbilityFeatures = document.getElementById('passiveAbilityFeatures');
+  elements.addPassiveModifier = document.getElementById('addPassiveModifier');
+  elements.passiveModifierList = document.getElementById('passiveModifierList');
+  elements.cancelPassiveAbility = document.getElementById('cancelPassiveAbility');
+  elements.closePassiveAbility = document.getElementById('closePassiveAbility');
 }
 
 function updateNavState(activeAction) {
@@ -221,6 +454,26 @@ function updateNavState(activeAction) {
     const action = button.dataset.action;
     button.classList.toggle('active', action === activeAction);
   });
+}
+
+function showScreen(screenName) {
+  if (!elements.screens || elements.screens.length === 0) {
+    elements.screens = document.querySelectorAll('[data-screen]');
+  }
+  if (!elements.screens) return;
+  elements.screens.forEach((screen) => {
+    const isTarget = screen.dataset.screen === screenName;
+    screen.classList.toggle('hidden', !isTarget);
+  });
+}
+
+function getActiveScreen() {
+  if (!elements.screens || elements.screens.length === 0) {
+    elements.screens = document.querySelectorAll('[data-screen]');
+  }
+  if (!elements.screens) return null;
+  const active = Array.from(elements.screens).find((screen) => !screen.classList.contains('hidden'));
+  return active?.dataset.screen ?? null;
 }
 
 function renderCharacterList() {
@@ -285,11 +538,624 @@ function renderCharacterList() {
   elements.characterList.appendChild(fragment);
 }
 
+function aggregatePassiveModifiers(character) {
+  const totals = {};
+  STAT_KEYS.forEach((key) => {
+    totals[key] = 0;
+  });
+  if (!character || !Array.isArray(character.passiveAbilities)) {
+    return totals;
+  }
+  character.passiveAbilities.forEach((ability) => {
+    if (!ability || !Array.isArray(ability.modifiers)) return;
+    ability.modifiers.forEach((modifier) => {
+      if (!modifier || !STAT_KEYS.includes(modifier.stat)) return;
+      const value = Number.parseInt(modifier.value, 10);
+      if (Number.isNaN(value)) return;
+      totals[modifier.stat] += value;
+    });
+  });
+  return totals;
+}
+
+function renderStatModifiers(character) {
+  if (!elements.stats) return;
+  const totals = aggregatePassiveModifiers(character);
+  elements.stats.forEach((statElement) => {
+    const key = statElement.dataset.stat;
+    const container = statElement.querySelector('.stat-modifiers');
+    if (!container || !key) return;
+    const total = totals[key] ?? 0;
+    if (!total) {
+      container.innerHTML = '';
+      return;
+    }
+    const className = total > 0 ? 'positive' : 'negative';
+    const text = `${total > 0 ? '+' : ''}${total}`;
+    container.innerHTML = `<span class="stat-modifier ${className}">${escapeHtml(text)}</span>`;
+  });
+}
+
+function updateAbilityControlsAvailability() {
+  const hasCharacter = Boolean(getSelectedCharacter());
+  if (elements.addActiveAbility) {
+    elements.addActiveAbility.disabled = !hasCharacter;
+  }
+  if (elements.addPassiveAbility) {
+    elements.addPassiveAbility.disabled = !hasCharacter;
+  }
+}
+
+function createAbilityCardElement(ability, type) {
+  const card = document.createElement('article');
+  card.className = `ability-card ability-${type}`;
+  card.dataset.id = ability.id;
+  card.dataset.type = type;
+
+  const media = document.createElement('div');
+  media.className = 'ability-card-media';
+
+  if (ability.image) {
+    const img = document.createElement('img');
+    img.src = withVersion(ability.image);
+    img.alt = `Ilustración de ${ability.title}`;
+    media.appendChild(img);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'ability-image placeholder';
+    const icon = document.createElement('i');
+    icon.className = type === 'active' ? 'fa-solid fa-bolt' : 'fa-solid fa-leaf';
+    icon.setAttribute('aria-hidden', 'true');
+    placeholder.appendChild(icon);
+    media.appendChild(placeholder);
+  }
+
+  card.appendChild(media);
+
+  const body = document.createElement('div');
+  body.className = 'ability-card-body';
+
+  const header = document.createElement('header');
+  header.className = 'ability-card-header';
+
+  const title = document.createElement('h4');
+  title.textContent = ability.title;
+  header.appendChild(title);
+
+  if (ability.description) {
+    const description = document.createElement('p');
+    description.className = 'ability-description';
+    description.textContent = ability.description;
+    header.appendChild(description);
+  }
+
+  body.appendChild(header);
+
+  const featureList = document.createElement('ul');
+  featureList.className = 'ability-features';
+  if (ability.features.length > 0) {
+    ability.features.forEach((feature) => {
+      const item = document.createElement('li');
+      item.textContent = feature;
+      featureList.appendChild(item);
+    });
+  } else {
+    const emptyItem = document.createElement('li');
+    emptyItem.className = 'ability-feature-empty';
+    emptyItem.textContent = 'Sin características adicionales';
+    featureList.appendChild(emptyItem);
+  }
+  body.appendChild(featureList);
+
+  if (type === 'active') {
+    const cooldownContainer = document.createElement('div');
+    cooldownContainer.className = 'ability-cooldown';
+    const cooldownValue = Number.parseInt(ability.cooldown, 10) || 0;
+    if (cooldownValue > 0) {
+      cooldownContainer.setAttribute('aria-label', `Cooldown de ${cooldownValue} turnos`);
+      const dots = Math.min(cooldownValue, MAX_DISPLAY_COOLDOWN);
+      for (let index = 0; index < dots; index += 1) {
+        const dot = document.createElement('span');
+        dot.className = 'cooldown-dot';
+        cooldownContainer.appendChild(dot);
+      }
+      if (cooldownValue > MAX_DISPLAY_COOLDOWN) {
+        const extra = document.createElement('span');
+        extra.className = 'cooldown-extra';
+        extra.textContent = `+${cooldownValue - MAX_DISPLAY_COOLDOWN}`;
+        cooldownContainer.appendChild(extra);
+      }
+    } else {
+      cooldownContainer.classList.add('cooldown-none');
+      cooldownContainer.textContent = 'Sin cooldown';
+    }
+    body.appendChild(cooldownContainer);
+  } else if (type === 'passive') {
+    const modifierList = document.createElement('ul');
+    modifierList.className = 'ability-modifiers';
+    if (ability.modifiers.length > 0) {
+      ability.modifiers.forEach((modifier) => {
+        const item = document.createElement('li');
+        const label = document.createElement('span');
+        label.className = 'modifier-label';
+        label.textContent = STAT_LABELS[modifier.stat] || modifier.stat.toUpperCase();
+        const value = document.createElement('span');
+        const numeric = Number.parseInt(modifier.value, 10) || 0;
+        value.className = `modifier-value ${numeric >= 0 ? 'positive' : 'negative'}`;
+        value.textContent = `${numeric >= 0 ? '+' : ''}${numeric}`;
+        item.appendChild(label);
+        item.appendChild(value);
+        modifierList.appendChild(item);
+      });
+    } else {
+      const emptyModifier = document.createElement('li');
+      emptyModifier.className = 'ability-modifier-empty';
+      emptyModifier.textContent = 'Sin modificadores';
+      modifierList.appendChild(emptyModifier);
+    }
+    body.appendChild(modifierList);
+  }
+
+  card.appendChild(body);
+
+  const actions = document.createElement('footer');
+  actions.className = 'ability-card-actions';
+
+  const editButton = document.createElement('button');
+  editButton.type = 'button';
+  editButton.className = 'icon-button edit';
+  editButton.dataset.action = 'edit';
+  editButton.title = `Editar ${ability.title}`;
+  editButton.innerHTML = `${iconMarkup('pen-to-square')}<span>Editar</span>`;
+  actions.appendChild(editButton);
+
+  const deleteButton = document.createElement('button');
+  deleteButton.type = 'button';
+  deleteButton.className = 'icon-button delete';
+  deleteButton.dataset.action = 'delete';
+  deleteButton.title = `Eliminar ${ability.title}`;
+  deleteButton.innerHTML = `${iconMarkup('trash')}<span>Borrar</span>`;
+  actions.appendChild(deleteButton);
+
+  card.appendChild(actions);
+
+  return card;
+}
+
+function renderAbilityLists() {
+  updateAbilityControlsAvailability();
+  const character = getSelectedCharacter();
+  if (!elements.activeAbilityList || !elements.passiveAbilityList) {
+    return;
+  }
+
+  if (!character) {
+    const message = '<p class="empty-state">Seleccioná un personaje para administrar sus habilidades.</p>';
+    elements.activeAbilityList.innerHTML = message;
+    elements.passiveAbilityList.innerHTML = message;
+    return;
+  }
+
+  const activeFragment = document.createDocumentFragment();
+  const activeAbilities = Array.isArray(character.activeAbilities) ? character.activeAbilities : [];
+  if (activeAbilities.length === 0) {
+    const emptyMessage = document.createElement('p');
+    emptyMessage.className = 'empty-state';
+    emptyMessage.textContent = 'No hay habilidades activas registradas.';
+    activeFragment.appendChild(emptyMessage);
+  } else {
+    activeAbilities.forEach((ability) => {
+      activeFragment.appendChild(createAbilityCardElement(ability, 'active'));
+    });
+  }
+  elements.activeAbilityList.innerHTML = '';
+  elements.activeAbilityList.appendChild(activeFragment);
+
+  const passiveFragment = document.createDocumentFragment();
+  const passiveAbilities = Array.isArray(character.passiveAbilities) ? character.passiveAbilities : [];
+  if (passiveAbilities.length === 0) {
+    const emptyMessage = document.createElement('p');
+    emptyMessage.className = 'empty-state';
+    emptyMessage.textContent = 'No hay habilidades pasivas registradas.';
+    passiveFragment.appendChild(emptyMessage);
+  } else {
+    passiveAbilities.forEach((ability) => {
+      passiveFragment.appendChild(createAbilityCardElement(ability, 'passive'));
+    });
+  }
+  elements.passiveAbilityList.innerHTML = '';
+  elements.passiveAbilityList.appendChild(passiveFragment);
+}
+
+function showAbilitiesScreen() {
+  renderAbilityLists();
+  showScreen('abilities');
+  updateNavState('abilities');
+}
+
+function applyCharacterUpdate(characterId, updater) {
+  const index = characters.findIndex((item) => item.id === characterId);
+  if (index < 0) return null;
+  const current = characters[index];
+  const draft = {
+    ...current,
+    stats: { ...current.stats },
+    activeAbilities: [...(current.activeAbilities || [])],
+    passiveAbilities: [...(current.passiveAbilities || [])]
+  };
+  const maybeUpdated = updater ? updater(draft) : draft;
+  const next = maybeUpdated || draft;
+  const normalized = normalizeCharacter(next);
+  characters = [
+    ...characters.slice(0, index),
+    normalized,
+    ...characters.slice(index + 1)
+  ];
+  saveCharacters(characters);
+  if (selectedCharacterId === characterId) {
+    renderCharacterSheetView(normalized);
+    renderAbilityLists();
+  }
+  return normalized;
+}
+
+function syncBodyModalState() {
+  const openModal = document.querySelector('.modal:not(.hidden)');
+  document.body.classList.toggle('modal-open', Boolean(openModal));
+}
+
+function updateActiveAbilityPreview() {
+  if (!elements.activeAbilityPreview) return;
+  const source = abilityEditorState.image || DEFAULT_ABILITY_IMAGE;
+  elements.activeAbilityPreview.src = withVersion(source);
+  elements.activeAbilityPreview.alt = 'Vista previa de la habilidad activa';
+}
+
+function closeActiveAbilityModal() {
+  if (!elements.activeAbilityModal) return;
+  elements.activeAbilityModal.classList.add('hidden');
+  elements.activeAbilityForm?.reset();
+  if (elements.activeAbilityImage) {
+    elements.activeAbilityImage.value = '';
+  }
+  abilityEditorState.type = null;
+  abilityEditorState.editingId = null;
+  abilityEditorState.image = '';
+  abilityEditorState.modifiers = [];
+  updateActiveAbilityPreview();
+  syncBodyModalState();
+}
+
+function openActiveAbilityModal(ability = null) {
+  if (!elements.activeAbilityModal) return;
+  abilityEditorState.type = 'active';
+  abilityEditorState.editingId = ability?.id ?? null;
+  abilityEditorState.image = ability?.image || '';
+  abilityEditorState.modifiers = [];
+  elements.activeAbilityForm?.reset();
+  if (elements.activeAbilityTitle) {
+    elements.activeAbilityTitle.value = ability?.title ?? '';
+  }
+  if (elements.activeAbilityDescription) {
+    elements.activeAbilityDescription.value = ability?.description ?? '';
+  }
+  if (elements.activeAbilityFeatures) {
+    elements.activeAbilityFeatures.value = ability?.features?.join('\n') ?? '';
+  }
+  if (elements.activeAbilityCooldown) {
+    const cooldown = Number.parseInt(ability?.cooldown, 10);
+    elements.activeAbilityCooldown.value = Number.isNaN(cooldown) || cooldown < 0 ? 0 : cooldown;
+  }
+  if (elements.activeAbilityModalTitle) {
+    elements.activeAbilityModalTitle.textContent = ability ? 'Editar habilidad activa' : 'Nueva habilidad activa';
+  }
+  updateActiveAbilityPreview();
+  elements.activeAbilityModal.classList.remove('hidden');
+  syncBodyModalState();
+  elements.activeAbilityTitle?.focus({ preventScroll: true });
+}
+
+function handleActiveAbilityImageChange(event) {
+  const [file] = event.target.files || [];
+  if (!file) return;
+  if (file.type !== 'image/png') {
+    window.alert('La imagen debe ser un archivo PNG.');
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (loadEvent) => {
+    abilityEditorState.image = loadEvent.target?.result || '';
+    updateActiveAbilityPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleActiveAbilitySubmit(event) {
+  event.preventDefault();
+  if (!elements.activeAbilityForm) return;
+  const formData = new FormData(elements.activeAbilityForm);
+  const title = formData.get('title')?.toString().trim();
+  if (!title) {
+    window.alert('El título de la habilidad es obligatorio.');
+    return;
+  }
+  const description = formData.get('description')?.toString().trim() || '';
+  const features = normalizeFeatureList(formData.get('features'));
+  const cooldownValue = Number.parseInt(formData.get('cooldown'), 10);
+  const cooldown = Number.isNaN(cooldownValue) || cooldownValue < 0 ? 0 : cooldownValue;
+  const baseId = slugify(title || 'habilidad-activa');
+  const characterId = selectedCharacterId;
+  if (!characterId) {
+    window.alert('Seleccioná un personaje antes de agregar habilidades.');
+    return;
+  }
+
+  applyCharacterUpdate(characterId, (draft) => {
+    const ability = {
+      id:
+        abilityEditorState.editingId || ensureUniqueAbilityId(draft.activeAbilities, `${baseId}-activa`),
+      title,
+      description,
+      features,
+      cooldown,
+      image: abilityEditorState.image || ''
+    };
+    const list = draft.activeAbilities;
+    const index = list.findIndex((item) => item.id === ability.id);
+    if (index >= 0) {
+      list[index] = ability;
+    } else {
+      list.push(ability);
+    }
+    return draft;
+  });
+
+  closeActiveAbilityModal();
+}
+
+function addPassiveModifierRow(modifier = null) {
+  if (!elements.passiveModifierList) return;
+  const row = document.createElement('div');
+  row.className = 'modifier-row';
+  modifierRowCounter += 1;
+  const statId = `modifier-stat-${modifierRowCounter}`;
+  const valueId = `modifier-value-${modifierRowCounter}`;
+
+  const statWrapper = document.createElement('div');
+  statWrapper.className = 'modifier-field';
+  const statLabel = document.createElement('label');
+  statLabel.className = 'sr-only';
+  statLabel.setAttribute('for', statId);
+  statLabel.textContent = 'Estadística';
+  const select = document.createElement('select');
+  select.name = 'modifier-stat';
+  select.className = 'modifier-stat';
+  select.id = statId;
+  STAT_KEYS.forEach((key) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = STAT_LABELS[key] || key.toUpperCase();
+    select.appendChild(option);
+  });
+  statWrapper.appendChild(statLabel);
+  statWrapper.appendChild(select);
+
+  const valueWrapper = document.createElement('div');
+  valueWrapper.className = 'modifier-field';
+  const valueLabel = document.createElement('label');
+  valueLabel.className = 'sr-only';
+  valueLabel.setAttribute('for', valueId);
+  valueLabel.textContent = 'Valor del modificador';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.name = 'modifier-value';
+  input.className = 'modifier-value-input';
+  input.step = '1';
+  input.value = '0';
+  input.id = valueId;
+  valueWrapper.appendChild(valueLabel);
+  valueWrapper.appendChild(input);
+
+  const removeButton = document.createElement('button');
+  removeButton.type = 'button';
+  removeButton.className = 'icon-button delete';
+  removeButton.dataset.action = 'remove-modifier';
+  removeButton.title = 'Quitar modificador';
+  removeButton.innerHTML = `${iconMarkup('xmark')}<span>Quitar</span>`;
+
+  row.appendChild(statWrapper);
+  row.appendChild(valueWrapper);
+  row.appendChild(removeButton);
+
+  elements.passiveModifierList.appendChild(row);
+
+  if (modifier) {
+    if (STAT_KEYS.includes(modifier.stat)) {
+      select.value = modifier.stat;
+    }
+    if (typeof modifier.value === 'number' || typeof modifier.value === 'string') {
+      const parsed = Number.parseInt(modifier.value, 10);
+      input.value = Number.isNaN(parsed) ? '0' : parsed.toString();
+    }
+  }
+}
+
+function clearPassiveModifiers() {
+  if (!elements.passiveModifierList) return;
+  elements.passiveModifierList.innerHTML = '';
+}
+
+function closePassiveAbilityModal() {
+  if (!elements.passiveAbilityModal) return;
+  elements.passiveAbilityModal.classList.add('hidden');
+  elements.passiveAbilityForm?.reset();
+  clearPassiveModifiers();
+  abilityEditorState.type = null;
+  abilityEditorState.editingId = null;
+  abilityEditorState.image = '';
+  abilityEditorState.modifiers = [];
+  modifierRowCounter = 0;
+  syncBodyModalState();
+}
+
+function openPassiveAbilityModal(ability = null) {
+  if (!elements.passiveAbilityModal) return;
+  abilityEditorState.type = 'passive';
+  abilityEditorState.editingId = ability?.id ?? null;
+  abilityEditorState.image = '';
+  abilityEditorState.modifiers = Array.isArray(ability?.modifiers) ? ability.modifiers : [];
+  elements.passiveAbilityForm?.reset();
+  if (elements.passiveAbilityTitle) {
+    elements.passiveAbilityTitle.value = ability?.title ?? '';
+  }
+  if (elements.passiveAbilityDescription) {
+    elements.passiveAbilityDescription.value = ability?.description ?? '';
+  }
+  if (elements.passiveAbilityFeatures) {
+    elements.passiveAbilityFeatures.value = ability?.features?.join('\n') ?? '';
+  }
+  if (elements.passiveAbilityModalTitle) {
+    elements.passiveAbilityModalTitle.textContent = ability
+      ? 'Editar habilidad pasiva'
+      : 'Nueva habilidad pasiva';
+  }
+  modifierRowCounter = 0;
+  clearPassiveModifiers();
+  if (abilityEditorState.modifiers.length > 0) {
+    abilityEditorState.modifiers.forEach((modifier) => addPassiveModifierRow(modifier));
+  } else {
+    addPassiveModifierRow();
+  }
+  elements.passiveAbilityModal.classList.remove('hidden');
+  syncBodyModalState();
+  elements.passiveAbilityTitle?.focus({ preventScroll: true });
+}
+
+function handlePassiveModifierListClick(event) {
+  const button = event.target.closest('button[data-action="remove-modifier"]');
+  if (!button) return;
+  const row = button.closest('.modifier-row');
+  if (row) {
+    row.remove();
+  }
+}
+
+function handlePassiveAbilitySubmit(event) {
+  event.preventDefault();
+  if (!elements.passiveAbilityForm) return;
+  const formData = new FormData(elements.passiveAbilityForm);
+  const title = formData.get('title')?.toString().trim();
+  if (!title) {
+    window.alert('El título de la habilidad es obligatorio.');
+    return;
+  }
+  const description = formData.get('description')?.toString().trim() || '';
+  const features = normalizeFeatureList(formData.get('features'));
+  const modifiers = [];
+  if (elements.passiveModifierList) {
+    elements.passiveModifierList.querySelectorAll('.modifier-row').forEach((row) => {
+      const stat = row.querySelector('select[name="modifier-stat"]')?.value;
+      const valueText = row.querySelector('input[name="modifier-value"]')?.value;
+      if (!stat) return;
+      const value = Number.parseInt(valueText, 10);
+      if (Number.isNaN(value)) return;
+      if (!STAT_KEYS.includes(stat)) return;
+      modifiers.push({ stat, value });
+    });
+  }
+
+  const baseId = slugify(title || 'habilidad-pasiva');
+  const characterId = selectedCharacterId;
+  if (!characterId) {
+    window.alert('Seleccioná un personaje antes de agregar habilidades.');
+    return;
+  }
+
+  applyCharacterUpdate(characterId, (draft) => {
+    const ability = {
+      id:
+        abilityEditorState.editingId || ensureUniqueAbilityId(draft.passiveAbilities, `${baseId}-pasiva`),
+      title,
+      description,
+      features,
+      modifiers
+    };
+    const list = draft.passiveAbilities;
+    const index = list.findIndex((item) => item.id === ability.id);
+    if (index >= 0) {
+      list[index] = ability;
+    } else {
+      list.push(ability);
+    }
+    return draft;
+  });
+
+  closePassiveAbilityModal();
+}
+
+function handleAbilityListClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const action = button.dataset.action;
+  if (!['edit', 'delete'].includes(action)) return;
+  const card = button.closest('.ability-card');
+  if (!card) return;
+  const abilityId = card.dataset.id;
+  const type = card.dataset.type;
+  if (!abilityId || !type) return;
+  const character = getSelectedCharacter();
+  if (!character) {
+    window.alert('Seleccioná un personaje para administrar sus habilidades.');
+    return;
+  }
+
+  if (action === 'edit') {
+    if (type === 'active') {
+      const ability = character.activeAbilities.find((item) => item.id === abilityId);
+      if (ability) {
+        openActiveAbilityModal(ability);
+      }
+    } else if (type === 'passive') {
+      const ability = character.passiveAbilities.find((item) => item.id === abilityId);
+      if (ability) {
+        openPassiveAbilityModal(ability);
+      }
+    }
+    return;
+  }
+
+  if (action === 'delete') {
+    const abilities = type === 'active' ? character.activeAbilities : character.passiveAbilities;
+    const ability = abilities.find((item) => item.id === abilityId);
+    if (!ability) return;
+    const confirmed = window.confirm(`¿Seguro que querés eliminar "${ability.title}"?`);
+    if (!confirmed) return;
+    applyCharacterUpdate(character.id, (draft) => {
+      if (type === 'active') {
+        draft.activeAbilities = draft.activeAbilities.filter((item) => item.id !== abilityId);
+      } else {
+        draft.passiveAbilities = draft.passiveAbilities.filter((item) => item.id !== abilityId);
+      }
+      return draft;
+    });
+  }
+}
+
 function selectCharacter(characterId) {
   selectedCharacterId = characterId;
   saveSelectedCharacterId(characterId);
   renderCharacterList();
-  showCharacterSheet(characterId);
+  const character = getSelectedCharacter();
+  if (character) {
+    renderAbilityLists();
+  }
+  const activeScreen = getActiveScreen();
+  if (activeScreen === 'abilities') {
+    showAbilitiesScreen();
+  } else if (character) {
+    showCharacterSheet(characterId);
+  }
 }
 
 function deleteCharacter(character) {
@@ -301,23 +1167,31 @@ function deleteCharacter(character) {
 
   if (selectedCharacterId === character.id) {
     selectedCharacterId = characters[0]?.id ?? null;
-    if (selectedCharacterId) {
-      showCharacterSheet(selectedCharacterId);
-    } else if (elements.screenSheet && elements.screenSelect) {
-      elements.screenSheet.classList.add('hidden');
-      elements.screenSelect.classList.remove('hidden');
-      updateNavState(null);
+    const nextCharacter = getSelectedCharacter();
+    if (nextCharacter) {
+      renderCharacterSheetView(nextCharacter);
     }
   }
 
   saveSelectedCharacterId(selectedCharacterId ?? '');
   renderCharacterList();
+  renderAbilityLists();
+
+  const activeScreen = getActiveScreen();
+  if (selectedCharacterId) {
+    if (activeScreen === 'abilities') {
+      showAbilitiesScreen();
+    } else if (activeScreen === 'sheet') {
+      showCharacterSheet(selectedCharacterId);
+    }
+  } else {
+    showScreen('select');
+    updateNavState(null);
+  }
 }
 
-function showCharacterSheet(characterId) {
-  const character = characters.find((item) => item.id === characterId);
+function renderCharacterSheetView(character) {
   if (!character) return;
-
   if (elements.heroName) {
     elements.heroName.textContent = character.name;
   }
@@ -348,12 +1222,14 @@ function showCharacterSheet(characterId) {
       }
     });
   }
+  renderStatModifiers(character);
+}
 
-  if (elements.screenSelect && elements.screenSheet) {
-    elements.screenSelect.classList.add('hidden');
-    elements.screenSheet.classList.remove('hidden');
-  }
-
+function showCharacterSheet(characterId) {
+  const character = characters.find((item) => item.id === characterId);
+  if (!character) return;
+  renderCharacterSheetView(character);
+  showScreen('sheet');
   updateNavState('sheet');
 }
 
@@ -370,7 +1246,9 @@ function createBlankCharacter() {
     level: 1,
     campaign: '',
     portrait: DEFAULT_PORTRAIT,
-    stats
+    stats,
+    activeAbilities: [],
+    passiveAbilities: []
   };
 }
 
@@ -387,12 +1265,11 @@ function openCharacterEditor(character) {
   }
 
   elements.editorModal?.classList.remove('hidden');
-  document.body.classList.add('modal-open');
+  syncBodyModalState();
 }
 
 function closeCharacterEditor() {
   elements.editorModal?.classList.add('hidden');
-  document.body.classList.remove('modal-open');
   editorState.editingId = null;
   editorState.portrait = DEFAULT_PORTRAIT;
   elements.characterForm?.reset();
@@ -400,6 +1277,7 @@ function closeCharacterEditor() {
     elements.editorTitle.textContent = 'Editor de personaje';
   }
   updatePortraitPreview();
+  syncBodyModalState();
 }
 
 function fillEditorForm(character) {
@@ -476,6 +1354,15 @@ function collectFormData(formData) {
     payload.stats[key] = normalizeStatValue(value);
   });
 
+  if (payload.id) {
+    const existing = characters.find((item) => item.id === payload.id);
+    payload.activeAbilities = Array.isArray(existing?.activeAbilities) ? existing.activeAbilities : [];
+    payload.passiveAbilities = Array.isArray(existing?.passiveAbilities) ? existing.passiveAbilities : [];
+  } else {
+    payload.activeAbilities = [];
+    payload.passiveAbilities = [];
+  }
+
   if (!payload.id) {
     payload.id = ensureUniqueId(slugify(payload.name));
   }
@@ -512,8 +1399,7 @@ function wireInteractions() {
     openCharacterEditor();
   });
   elements.navBack?.addEventListener('click', () => {
-    elements.screenSheet?.classList.add('hidden');
-    elements.screenSelect?.classList.remove('hidden');
+    showScreen('select');
     updateNavState(null);
   });
   elements.navSheet?.addEventListener('click', () => {
@@ -525,29 +1411,12 @@ function wireInteractions() {
       showCharacterSheet(selectedCharacterId);
     }
   });
-  elements.navSheet?.addEventListener('click', () => {
+  elements.navAbilities?.addEventListener('click', () => {
     if (!selectedCharacterId && characters[0]) {
       selectCharacter(characters[0].id);
-      return;
     }
-    if (selectedCharacterId) {
-      showCharacterSheet(selectedCharacterId);
-    }
+    showAbilitiesScreen();
   });
-
-  if (elements.heroToggle && elements.heroCard) {
-    elements.heroToggle.addEventListener('click', () => {
-      const nextCollapsed = !elements.heroCard.classList.contains('collapsed');
-      setHeroCardCollapsed(nextCollapsed);
-    });
-  }
-
-  if (elements.heroToggle && elements.heroCard) {
-    elements.heroToggle.addEventListener('click', () => {
-      const nextCollapsed = !elements.heroCard.classList.contains('collapsed');
-      setHeroCardCollapsed(nextCollapsed);
-    });
-  }
 
   if (elements.heroToggle && elements.heroCard) {
     elements.heroToggle.addEventListener('click', () => {
@@ -569,8 +1438,48 @@ function wireInteractions() {
     updatePortraitPreview();
   });
 
+  elements.addActiveAbility?.addEventListener('click', () => {
+    if (!selectedCharacterId) {
+      window.alert('Seleccioná un personaje antes de agregar habilidades.');
+      return;
+    }
+    openActiveAbilityModal();
+  });
+  elements.addPassiveAbility?.addEventListener('click', () => {
+    if (!selectedCharacterId) {
+      window.alert('Seleccioná un personaje antes de agregar habilidades.');
+      return;
+    }
+    openPassiveAbilityModal();
+  });
+  elements.activeAbilityForm?.addEventListener('submit', handleActiveAbilitySubmit);
+  elements.passiveAbilityForm?.addEventListener('submit', handlePassiveAbilitySubmit);
+  elements.activeAbilityImage?.addEventListener('change', handleActiveAbilityImageChange);
+  elements.clearActiveAbilityImage?.addEventListener('click', () => {
+    abilityEditorState.image = '';
+    if (elements.activeAbilityImage) {
+      elements.activeAbilityImage.value = '';
+    }
+    updateActiveAbilityPreview();
+  });
+  elements.cancelActiveAbility?.addEventListener('click', closeActiveAbilityModal);
+  elements.closeActiveAbility?.addEventListener('click', closeActiveAbilityModal);
+  elements.activeAbilityBackdrop?.addEventListener('click', closeActiveAbilityModal);
+  elements.cancelPassiveAbility?.addEventListener('click', closePassiveAbilityModal);
+  elements.closePassiveAbility?.addEventListener('click', closePassiveAbilityModal);
+  elements.passiveAbilityBackdrop?.addEventListener('click', closePassiveAbilityModal);
+  elements.addPassiveModifier?.addEventListener('click', () => addPassiveModifierRow());
+  elements.passiveModifierList?.addEventListener('click', handlePassiveModifierListClick);
+  elements.activeAbilityList?.addEventListener('click', handleAbilityListClick);
+  elements.passiveAbilityList?.addEventListener('click', handleAbilityListClick);
+
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !elements.editorModal?.classList.contains('hidden')) {
+    if (event.key !== 'Escape') return;
+    if (!elements.activeAbilityModal?.classList.contains('hidden')) {
+      closeActiveAbilityModal();
+    } else if (!elements.passiveAbilityModal?.classList.contains('hidden')) {
+      closePassiveAbilityModal();
+    } else if (!elements.editorModal?.classList.contains('hidden')) {
       closeCharacterEditor();
     }
   });
@@ -610,11 +1519,15 @@ function init() {
 
   if (selectedCharacterId) {
     showCharacterSheet(selectedCharacterId);
+    renderAbilityLists();
   } else {
+    showScreen('select');
     updateNavState(null);
+    updateAbilityControlsAvailability();
   }
 
   wireInteractions();
+  updateActiveAbilityPreview();
 }
 
 if (document.readyState === 'loading') {
