@@ -34,6 +34,11 @@ body {
   padding: 1.5rem;
 }
 
+.fa, .fa-solid, .fa-regular, .fa-brands {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+  font-weight: 900;
+}
+
 .icon {
   width: 1.1em;
   height: 1.1em;
