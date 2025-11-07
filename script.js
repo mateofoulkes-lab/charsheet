@@ -397,14 +397,6 @@ function renderCharacterList() {
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
-      <div class="card-actions">
-        <button class="icon-button edit" type="button" title="Editar ${character.name}" aria-label="Editar ${character.name}">
-          <i class="fa-solid fa-pen"></i>
-        </button>
-        <button class="icon-button delete" type="button" title="Eliminar ${character.name}" aria-label="Eliminar ${character.name}">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      </div>
     `;
 
     card.addEventListener('click', () => {
@@ -623,6 +615,11 @@ function fillEditorForm(character) {
       field.value = value;
     }
   });
+  header.appendChild(removeBtn);
+  abilityEl.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.className = 'form-grid two-col';
 
   STAT_KEYS.forEach((key) => {
     const baseField = document.getElementById(`stat-${key}-base`);
@@ -634,6 +631,19 @@ function fillEditorForm(character) {
       deltaField.value = isNewCharacter ? '' : character.stats[key]?.delta ?? '';
     }
   });
+  nameLabel.appendChild(nameInput);
+  grid.appendChild(nameLabel);
+
+  const iconLabel = document.createElement('label');
+  iconLabel.className = 'form-field stacked';
+  iconLabel.textContent = 'Icono (clase Font Awesome)';
+  const iconInput = document.createElement('input');
+  iconInput.type = 'text';
+  iconInput.dataset.field = 'ability-icon';
+  iconInput.placeholder = 'fa-solid fa-star';
+  iconInput.value = normalized.icon;
+  iconLabel.appendChild(iconInput);
+  grid.appendChild(iconLabel);
 
   if (elements.portraitPreview) {
     updatePortraitPreview();
@@ -1007,7 +1017,8 @@ function init() {
   cacheElements();
 
   characters = loadCharacters();
-  selectedCharacterId = loadSelectedCharacterId() || characters[0]?.id ?? null;
+  const storedSelectedId = loadSelectedCharacterId();
+  selectedCharacterId = storedSelectedId || characters[0]?.id || null;
 
   renderCharacterList();
   if (selectedCharacterId) {
