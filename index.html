@@ -11,6 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
   <link id="mainStylesheet" rel="stylesheet" href="" />
   <script>
     window.APP_VERSION = Date.now().toString();
@@ -132,6 +138,9 @@
     </symbol>
   </svg>
   <div id="app" class="app">
+    <div id="fa-check" style="padding:8px">
+      <i class="fa-solid fa-dragon"></i> CharSheet Companion
+    </div>
     <div class="character-select" data-screen="select">
       <header class="select-header">
         <h1>Selecciona tu Personaje</h1>
@@ -155,6 +164,7 @@
         <div class="hero-info">
           <h2 id="heroName" class="hero-name">Nombre del PJ</h2>
           <p id="heroDetails" class="hero-details">Humano · Bardo · Nivel 3</p>
+          <p id="heroAffiliation" class="hero-affiliation hidden">Grupo · Campaña</p>
         </div>
         <button
           type="button"
@@ -179,6 +189,7 @@
           <div class="stat-content">
             <span class="stat-label">VIDA</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="vida"></div>
           </div>
         </div>
         <div class="stat" data-stat="ataque">
@@ -190,6 +201,7 @@
           <div class="stat-content">
             <span class="stat-label">ATQ</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="ataque"></div>
           </div>
         </div>
         <div class="stat" data-stat="defensa">
@@ -201,6 +213,7 @@
           <div class="stat-content">
             <span class="stat-label">DEF</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="defensa"></div>
           </div>
         </div>
         <div class="stat" data-stat="danio">
@@ -212,31 +225,56 @@
           <div class="stat-content">
             <span class="stat-label">DAÑO</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="danio"></div>
           </div>
         </div>
         <div class="stat" data-stat="movimiento">
           <span class="stat-icon">
-            <svg class="icon icon-movement" aria-hidden="true" focusable="false">
-              <use href="#icon-movement" xlink:href="#icon-movement"></use>
-            </svg>
+            <i class="fa-solid fa-shoe-prints" aria-hidden="true"></i>
           </span>
           <div class="stat-content">
             <span class="stat-label">MOV</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="movimiento"></div>
           </div>
         </div>
         <div class="stat" data-stat="alcance">
           <span class="stat-icon">
-            <svg class="icon icon-eye-range" aria-hidden="true" focusable="false">
-              <use href="#icon-eye-range" xlink:href="#icon-eye-range"></use>
-            </svg>
+            <i class="fa-solid fa-bullseye" aria-hidden="true"></i>
           </span>
           <div class="stat-content">
             <span class="stat-label">ALC</span>
             <span class="stat-value">0</span>
+            <div class="stat-modifiers" data-stat-modifiers="alcance"></div>
           </div>
         </div>
       </section>
+    </div>
+    <div class="inventory-screen hidden" data-screen="inventory">
+      <div class="inventory-header">
+        <button type="button" class="btn primary" id="addInventoryItem">Agregar nuevo item</button>
+      </div>
+      <div class="inventory-list" id="inventoryList" aria-live="polite"></div>
+    </div>
+    <div class="abilities-screen hidden" data-screen="abilities">
+      <div class="abilities-header">
+        <button type="button" class="btn primary" id="addActiveAbility">Agregar habilidad activa</button>
+        <button type="button" class="btn secondary" id="addPassiveAbility">Agregar habilidad pasiva</button>
+      </div>
+      <div class="ability-columns">
+        <section class="ability-column">
+          <header class="ability-column-header">
+            <h3>Habilidades activas</h3>
+          </header>
+          <div class="ability-list" id="activeAbilityList" aria-live="polite"></div>
+        </section>
+        <section class="ability-column">
+          <header class="ability-column-header">
+            <h3>Habilidades pasivas</h3>
+          </header>
+          <div class="ability-list" id="passiveAbilityList" aria-live="polite"></div>
+        </section>
+      </div>
     </div>
     <nav class="bottom-bar" aria-label="Menú principal">
       <button type="button" class="nav-button" data-action="back" aria-label="Volver">
@@ -264,15 +302,11 @@
         <span class="sr-only">Habilidades y hechizos</span>
       </button>
       <button type="button" class="nav-button" data-action="notes" aria-label="Notas">
-        <svg class="icon icon-hand-sparkles" aria-hidden="true" focusable="false">
-          <use href="#icon-hand-sparkles" xlink:href="#icon-hand-sparkles"></use>
-        </svg>
+        <i class="fa-solid fa-feather-pointed" aria-hidden="true"></i>
         <span class="sr-only">Notas</span>
       </button>
       <button type="button" class="nav-button" data-action="settings" aria-label="Opciones">
-        <svg class="icon icon-gear" aria-hidden="true" focusable="false">
-          <use href="#icon-gear" xlink:href="#icon-gear"></use>
-        </svg>
+        <i class="fa-solid fa-gear" aria-hidden="true"></i>
         <span class="sr-only">Opciones</span>
       </button>
     </nav>
@@ -308,6 +342,10 @@
             <label class="form-field stacked">
               Clase
               <input id="characterClass" name="characterClass" type="text" />
+            </label>
+            <label class="form-field stacked">
+              Grupo
+              <input id="characterGroup" name="characterGroup" type="text" />
             </label>
             <label class="form-field stacked">
               Campaña / Compañía
@@ -387,6 +425,167 @@
         </section>
         <footer class="form-actions">
           <button type="button" class="btn secondary" id="cancelEditor">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="activeAbilityModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="activeAbilityModalTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="active"></div>
+    <div class="modal-dialog ability-modal">
+      <header class="modal-header">
+        <h2 id="activeAbilityModalTitle">Nueva habilidad activa</h2>
+        <button type="button" class="icon-button close" id="closeActiveAbility" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <form id="activeAbilityForm" class="ability-form" autocomplete="off">
+        <div class="form-grid one-col">
+          <label class="form-field stacked">
+            Título
+            <input id="activeAbilityTitle" name="title" type="text" required />
+          </label>
+          <label class="form-field stacked">
+            Descripción
+            <textarea id="activeAbilityDescription" name="description" rows="3"></textarea>
+          </label>
+          <label class="form-field stacked">
+            Características (una por línea)
+            <textarea id="activeAbilityFeatures" name="features" rows="4"></textarea>
+          </label>
+          <label class="form-field stacked">
+            Turnos de cooldown
+            <input id="activeAbilityCooldown" name="cooldown" type="number" min="0" value="0" />
+          </label>
+        </div>
+        <div class="ability-image-field">
+          <img id="activeAbilityPreview" alt="Vista previa de la habilidad" />
+          <div class="ability-image-actions">
+            <label class="btn primary file-btn">
+              <svg class="icon icon-upload" aria-hidden="true" focusable="false">
+                <use href="#icon-upload" xlink:href="#icon-upload"></use>
+              </svg>
+              Subir PNG
+              <input id="activeAbilityImage" type="file" accept="image/png" hidden />
+            </label>
+            <button type="button" class="btn secondary" id="clearActiveAbilityImage">Quitar imagen</button>
+          </div>
+        </div>
+        <footer class="form-actions">
+          <button type="button" class="btn secondary" id="cancelActiveAbility">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="passiveAbilityModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="passiveAbilityModalTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="passive"></div>
+    <div class="modal-dialog ability-modal">
+      <header class="modal-header">
+        <h2 id="passiveAbilityModalTitle">Nueva habilidad pasiva</h2>
+        <button type="button" class="icon-button close" id="closePassiveAbility" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <form id="passiveAbilityForm" class="ability-form" autocomplete="off">
+        <div class="form-grid one-col">
+          <label class="form-field stacked">
+            Título
+            <input id="passiveAbilityTitle" name="title" type="text" required />
+          </label>
+          <label class="form-field stacked">
+            Descripción
+            <textarea id="passiveAbilityDescription" name="description" rows="3"></textarea>
+          </label>
+          <label class="form-field stacked">
+            Características (una por línea)
+            <textarea id="passiveAbilityFeatures" name="features" rows="4"></textarea>
+          </label>
+        </div>
+        <section class="modifier-section">
+          <div class="modifier-header">
+            <h3>Modificadores</h3>
+            <button type="button" class="btn tertiary" id="addPassiveModifier">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              <span>Agregar modificador</span>
+            </button>
+          </div>
+          <div class="modifier-list" id="passiveModifierList" aria-live="polite"></div>
+        </section>
+        <footer class="form-actions">
+          <button type="button" class="btn secondary" id="cancelPassiveAbility">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="inventoryModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="inventoryModalTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="inventory"></div>
+    <div class="modal-dialog ability-modal">
+      <header class="modal-header">
+        <h2 id="inventoryModalTitle">Nuevo item</h2>
+        <button type="button" class="icon-button close" id="closeInventoryModal" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <form id="inventoryForm" class="inventory-form" autocomplete="off">
+        <div class="form-grid">
+          <label class="form-field stacked">
+            Título
+            <input id="inventoryTitle" name="title" type="text" required />
+          </label>
+          <label class="form-field stacked">
+            Descripción
+            <textarea id="inventoryDescription" name="description" rows="4"></textarea>
+          </label>
+        </div>
+        <div class="inventory-image-field">
+          <div class="inventory-image-frame">
+            <img id="inventoryPreview" alt="Vista previa del item" class="hidden" />
+            <div class="inventory-image-placeholder" id="inventoryPreviewPlaceholder">
+              <i class="fa-solid fa-circle" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div class="inventory-image-actions">
+            <label class="btn primary file-btn">
+              <svg class="icon icon-upload" aria-hidden="true" focusable="false">
+                <use href="#icon-upload" xlink:href="#icon-upload"></use>
+              </svg>
+              Subir PNG
+              <input id="inventoryImage" type="file" accept="image/png" hidden />
+            </label>
+            <button type="button" class="btn secondary" id="clearInventoryImage">Quitar imagen</button>
+          </div>
+        </div>
+        <footer class="form-actions">
+          <button type="button" class="btn secondary" id="cancelInventory">Cancelar</button>
           <button type="submit" class="btn primary">Guardar</button>
         </footer>
       </form>
