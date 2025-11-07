@@ -11,6 +11,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
   <link id="mainStylesheet" rel="stylesheet" href="" />
   <script>
     window.APP_VERSION = Date.now().toString();
@@ -132,6 +138,9 @@
     </symbol>
   </svg>
   <div id="app" class="app">
+    <div id="fa-check" style="padding:8px">
+      <i class="fa-solid fa-dragon"></i> Prueba de icono
+    </div>
     <div class="character-select" data-screen="select">
       <header class="select-header">
         <h1>Selecciona tu Personaje</h1>
@@ -216,9 +225,7 @@
         </div>
         <div class="stat" data-stat="movimiento">
           <span class="stat-icon">
-            <svg class="icon icon-movement" aria-hidden="true" focusable="false">
-              <use href="#icon-movement" xlink:href="#icon-movement"></use>
-            </svg>
+            <i class="fa-solid fa-shoe-prints" aria-hidden="true"></i>
           </span>
           <div class="stat-content">
             <span class="stat-label">MOV</span>
@@ -227,9 +234,7 @@
         </div>
         <div class="stat" data-stat="alcance">
           <span class="stat-icon">
-            <svg class="icon icon-eye-range" aria-hidden="true" focusable="false">
-              <use href="#icon-eye-range" xlink:href="#icon-eye-range"></use>
-            </svg>
+            <i class="fa-solid fa-bullseye" aria-hidden="true"></i>
           </span>
           <div class="stat-content">
             <span class="stat-label">ALC</span>
@@ -264,15 +269,11 @@
         <span class="sr-only">Habilidades y hechizos</span>
       </button>
       <button type="button" class="nav-button" data-action="notes" aria-label="Notas">
-        <svg class="icon icon-hand-sparkles" aria-hidden="true" focusable="false">
-          <use href="#icon-hand-sparkles" xlink:href="#icon-hand-sparkles"></use>
-        </svg>
+        <i class="fa-solid fa-feather-pointed" aria-hidden="true"></i>
         <span class="sr-only">Notas</span>
       </button>
       <button type="button" class="nav-button" data-action="settings" aria-label="Opciones">
-        <svg class="icon icon-gear" aria-hidden="true" focusable="false">
-          <use href="#icon-gear" xlink:href="#icon-gear"></use>
-        </svg>
+        <i class="fa-solid fa-gear" aria-hidden="true"></i>
         <span class="sr-only">Opciones</span>
       </button>
     </nav>
