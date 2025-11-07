@@ -514,6 +514,29 @@ function wireInteractions() {
       showCharacterSheet(selectedCharacterId);
     }
   });
+  elements.navSheet?.addEventListener('click', () => {
+    if (!selectedCharacterId && characters[0]) {
+      selectCharacter(characters[0].id);
+      return;
+    }
+    if (selectedCharacterId) {
+      showCharacterSheet(selectedCharacterId);
+    }
+  });
+
+  if (elements.heroToggle && elements.heroCard) {
+    elements.heroToggle.addEventListener('click', () => {
+      const nextCollapsed = !elements.heroCard.classList.contains('collapsed');
+      setHeroCardCollapsed(nextCollapsed);
+    });
+  }
+
+  if (elements.heroToggle && elements.heroCard) {
+    elements.heroToggle.addEventListener('click', () => {
+      const nextCollapsed = !elements.heroCard.classList.contains('collapsed');
+      setHeroCardCollapsed(nextCollapsed);
+    });
+  }
 
   if (elements.heroToggle && elements.heroCard) {
     elements.heroToggle.addEventListener('click', () => {
