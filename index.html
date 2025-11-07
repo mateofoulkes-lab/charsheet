@@ -51,95 +51,49 @@
       </section>
 
       <section class="stats-panel">
-        <div class="stat" data-stat="fuerza">
-          <span class="stat-icon"><i class="fa-solid fa-hand-fist"></i></span>
+        <div class="stat" data-stat="vida">
+          <span class="stat-icon"><i class="fa-solid fa-heart"></i></span>
           <div class="stat-content">
-            <span class="stat-label">FUE</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
-          </div>
-        </div>
-        <div class="stat" data-stat="agilidad">
-          <span class="stat-icon"><i class="fa-solid fa-shoe-prints"></i></span>
-          <div class="stat-content">
-            <span class="stat-label">AGI</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
-          </div>
-        </div>
-        <div class="stat" data-stat="inteligencia">
-          <span class="stat-icon"><i class="fa-solid fa-brain"></i></span>
-          <div class="stat-content">
-            <span class="stat-label">INT</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
-          </div>
-        </div>
-        <div class="stat" data-stat="carisma">
-          <span class="stat-icon"><i class="fa-solid fa-comments"></i></span>
-          <div class="stat-content">
-            <span class="stat-label">CAR</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+            <span class="stat-label">Vida</span>
+            <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="ataque">
           <span class="stat-icon"><i class="fa-solid fa-crosshairs"></i></span>
           <div class="stat-content">
-            <span class="stat-label">ATQ</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+            <span class="stat-label">Ataque</span>
+            <span class="stat-value">0</span>
+          </div>
+        </div>
+        <div class="stat" data-stat="defensa">
+          <span class="stat-icon"><i class="fa-solid fa-shield"></i></span>
+          <div class="stat-content">
+            <span class="stat-label">Defensa</span>
+            <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="danio">
           <span class="stat-icon"><i class="fa-solid fa-burst"></i></span>
           <div class="stat-content">
-            <span class="stat-label">DAÑO</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+            <span class="stat-label">Daño</span>
+            <span class="stat-value">0</span>
           </div>
         </div>
         <div class="stat" data-stat="movimiento">
           <span class="stat-icon"><i class="fa-solid fa-person-running"></i></span>
           <div class="stat-content">
-            <span class="stat-label">MOV</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+            <span class="stat-label">Movimiento</span>
+            <span class="stat-value">0</span>
           </div>
         </div>
-        <div class="stat" data-stat="vida">
-          <span class="stat-icon"><i class="fa-solid fa-heart"></i></span>
+        <div class="stat" data-stat="alcance">
+          <span class="stat-icon"><i class="fa-solid fa-arrows-to-eye"></i></span>
           <div class="stat-content">
-            <span class="stat-label">VIDA</span>
-            <span class="stat-values"><span class="base">0</span> <span class="delta">+0</span></span>
+            <span class="stat-label">Alcance</span>
+            <span class="stat-value">0</span>
           </div>
         </div>
       </section>
-
-      <section class="abilities-section">
-        <header class="section-header">
-          <h3>Habilidades Activas</h3>
-        </header>
-        <div class="abilities-grid" id="activeAbilities">
-          <!-- Abilities inserted by JS -->
-        </div>
-      </section>
-
-      <nav class="bottom-nav">
-        <button class="nav-item active" data-view="sheet">
-          <i class="fa-solid fa-id-card"></i>
-          <span>Hoja</span>
-        </button>
-        <button class="nav-item" data-view="abilities">
-          <i class="fa-solid fa-fire"></i>
-          <span>Habilidades</span>
-        </button>
-        <button class="nav-item" data-view="inventory">
-          <i class="fa-solid fa-bag-shopping"></i>
-          <span>Inventario</span>
-        </button>
-        <button class="nav-item" data-view="notes">
-          <i class="fa-solid fa-book"></i>
-          <span>Notas</span>
-        </button>
-        <button class="nav-item" data-view="edit">
-          <i class="fa-solid fa-feather"></i>
-          <span>Editar</span>
-        </button>
-      </nav>
     </div>
   </div>
 
@@ -162,7 +116,7 @@
             </label>
             <label class="form-field stacked">
               Nivel
-              <input id="characterLevel" name="characterLevel" type="number" min="1" />
+              <input id="characterLevel" name="characterLevel" type="number" min="1" value="1" />
             </label>
             <label class="form-field stacked">
               Raza / Ancestría
@@ -171,14 +125,6 @@
             <label class="form-field stacked">
               Clase
               <input id="characterClass" name="characterClass" type="text" />
-            </label>
-            <label class="form-field stacked">
-              Campaña
-              <input id="characterCampaign" name="characterCampaign" type="text" />
-            </label>
-            <label class="form-field stacked">
-              Lema / Rol
-              <input id="characterTagline" name="characterTagline" type="text" />
             </label>
           </div>
         </section>
@@ -204,108 +150,50 @@
         <section class="form-section">
           <h3>Estadísticas</h3>
           <div class="stats-form-grid">
-            <div class="stat-input" data-stat="fuerza">
-              <h4>Fuerza</h4>
+            <div class="stat-input" data-stat="vida">
+              <h4>Vida</h4>
               <label class="form-field stacked">
-                Base
-                <input id="stat-fuerza-base" name="stat-fuerza-base" type="text" />
-              </label>
-              <label class="form-field stacked">
-                Modificador
-                <input id="stat-fuerza-delta" name="stat-fuerza-delta" type="text" />
-              </label>
-            </div>
-            <div class="stat-input" data-stat="agilidad">
-              <h4>Agilidad</h4>
-              <label class="form-field stacked">
-                Base
-                <input id="stat-agilidad-base" name="stat-agilidad-base" type="text" />
-              </label>
-              <label class="form-field stacked">
-                Modificador
-                <input id="stat-agilidad-delta" name="stat-agilidad-delta" type="text" />
-              </label>
-            </div>
-            <div class="stat-input" data-stat="inteligencia">
-              <h4>Inteligencia</h4>
-              <label class="form-field stacked">
-                Base
-                <input id="stat-inteligencia-base" name="stat-inteligencia-base" type="text" />
-              </label>
-              <label class="form-field stacked">
-                Modificador
-                <input id="stat-inteligencia-delta" name="stat-inteligencia-delta" type="text" />
-              </label>
-            </div>
-            <div class="stat-input" data-stat="carisma">
-              <h4>Carisma</h4>
-              <label class="form-field stacked">
-                Base
-                <input id="stat-carisma-base" name="stat-carisma-base" type="text" />
-              </label>
-              <label class="form-field stacked">
-                Modificador
-                <input id="stat-carisma-delta" name="stat-carisma-delta" type="text" />
+                Valor
+                <input id="stat-vida" name="stat-vida" type="text" />
               </label>
             </div>
             <div class="stat-input" data-stat="ataque">
               <h4>Ataque</h4>
               <label class="form-field stacked">
-                Base
-                <input id="stat-ataque-base" name="stat-ataque-base" type="text" />
+                Valor
+                <input id="stat-ataque" name="stat-ataque" type="text" />
               </label>
+            </div>
+            <div class="stat-input" data-stat="defensa">
+              <h4>Defensa</h4>
               <label class="form-field stacked">
-                Modificador
-                <input id="stat-ataque-delta" name="stat-ataque-delta" type="text" />
+                Valor
+                <input id="stat-defensa" name="stat-defensa" type="text" />
               </label>
             </div>
             <div class="stat-input" data-stat="danio">
               <h4>Daño</h4>
               <label class="form-field stacked">
-                Base
-                <input id="stat-danio-base" name="stat-danio-base" type="text" />
-              </label>
-              <label class="form-field stacked">
-                Modificador
-                <input id="stat-danio-delta" name="stat-danio-delta" type="text" />
+                Valor
+                <input id="stat-danio" name="stat-danio" type="text" />
               </label>
             </div>
             <div class="stat-input" data-stat="movimiento">
               <h4>Movimiento</h4>
               <label class="form-field stacked">
-                Base
-                <input id="stat-movimiento-base" name="stat-movimiento-base" type="text" />
-              </label>
-              <label class="form-field stacked">
-                Modificador
-                <input id="stat-movimiento-delta" name="stat-movimiento-delta" type="text" />
+                Valor
+                <input id="stat-movimiento" name="stat-movimiento" type="text" />
               </label>
             </div>
-            <div class="stat-input" data-stat="vida">
-              <h4>Vida</h4>
+            <div class="stat-input" data-stat="alcance">
+              <h4>Alcance</h4>
               <label class="form-field stacked">
-                Base
-                <input id="stat-vida-base" name="stat-vida-base" type="text" />
-              </label>
-              <label class="form-field stacked">
-                Modificador
-                <input id="stat-vida-delta" name="stat-vida-delta" type="text" />
+                Valor
+                <input id="stat-alcance" name="stat-alcance" type="text" />
               </label>
             </div>
           </div>
         </section>
-
-        <section class="form-section">
-          <div class="section-header compact">
-            <h3>Habilidades</h3>
-            <button type="button" class="btn secondary" id="addAbilityBtn">
-              <i class="fa-solid fa-plus"></i>
-              Agregar habilidad
-            </button>
-          </div>
-          <div id="abilitiesContainer" class="abilities-form-container"></div>
-        </section>
-
         <footer class="form-actions">
           <button type="button" class="btn secondary" id="cancelEditor">Cancelar</button>
           <button type="submit" class="btn primary">Guardar</button>
