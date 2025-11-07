@@ -240,11 +240,11 @@ function renderCharacterList() {
       </div>
       <div class="card-actions">
         <button class="icon-button edit" type="button" title="Editar ${character.name}">
-          <i class="fa-solid fa-pen"></i>
+          <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
           <span>Editar</span>
         </button>
         <button class="icon-button delete" type="button" title="Eliminar ${character.name}">
-          <i class="fa-solid fa-trash"></i>
+          <i class="fa-solid fa-trash" aria-hidden="true"></i>
           <span>Borrar</span>
         </button>
       </div>
@@ -514,6 +514,22 @@ function wireInteractions() {
       showCharacterSheet(selectedCharacterId);
     }
   });
+  elements.navSheet?.addEventListener('click', () => {
+    if (!selectedCharacterId && characters[0]) {
+      selectCharacter(characters[0].id);
+      return;
+    }
+    if (selectedCharacterId) {
+      showCharacterSheet(selectedCharacterId);
+    }
+  });
+
+  if (elements.heroToggle && elements.heroCard) {
+    elements.heroToggle.addEventListener('click', () => {
+      const nextCollapsed = !elements.heroCard.classList.contains('collapsed');
+      setHeroCardCollapsed(nextCollapsed);
+    });
+  }
 
   if (elements.heroToggle && elements.heroCard) {
     elements.heroToggle.addEventListener('click', () => {
