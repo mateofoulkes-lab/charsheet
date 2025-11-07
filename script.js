@@ -522,6 +522,13 @@ function wireInteractions() {
     });
   }
 
+  if (elements.heroToggle && elements.heroCard) {
+    elements.heroToggle.addEventListener('click', () => {
+      const nextCollapsed = !elements.heroCard.classList.contains('collapsed');
+      setHeroCardCollapsed(nextCollapsed);
+    });
+  }
+
   elements.editorBackdrop?.addEventListener('click', closeCharacterEditor);
   elements.closeEditor?.addEventListener('click', closeCharacterEditor);
   elements.cancelEditor?.addEventListener('click', closeCharacterEditor);
