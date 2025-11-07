@@ -397,6 +397,14 @@ function renderCharacterList() {
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
+      <div class="card-actions">
+        <button class="icon-button edit" type="button" title="Editar ${character.name}" aria-label="Editar ${character.name}">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button class="icon-button delete" type="button" title="Eliminar ${character.name}" aria-label="Eliminar ${character.name}">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
     `;
 
     card.addEventListener('click', () => {
