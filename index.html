@@ -40,10 +40,6 @@
     </div>
 
     <div class="character-sheet hidden" data-screen="sheet">
-      <button class="btn back-btn" id="backToSelect">
-        <i class="fa-solid fa-chevron-left"></i>
-        Volver
-      </button>
       <section class="hero-card">
         <div class="hero-background"></div>
         <img data-default-portrait alt="Retrato del personaje" class="hero-portrait" />
@@ -108,6 +104,32 @@
         </div>
       </section>
     </div>
+    <nav class="bottom-bar" aria-label="Menú principal">
+      <button type="button" class="nav-button" data-action="back" aria-label="Volver">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <span class="sr-only">Volver</span>
+      </button>
+      <button type="button" class="nav-button" data-action="sheet" aria-label="Hoja de personaje">
+        <i class="fa-solid fa-user" aria-hidden="true"></i>
+        <span class="sr-only">Hoja de personaje</span>
+      </button>
+      <button type="button" class="nav-button" data-action="inventory" aria-label="Inventario">
+        <i class="fa-solid fa-toolbox" aria-hidden="true"></i>
+        <span class="sr-only">Inventario</span>
+      </button>
+      <button type="button" class="nav-button" data-action="abilities" aria-label="Habilidades y hechizos">
+        <i class="fa-solid fa-hand-sparkles" aria-hidden="true"></i>
+        <span class="sr-only">Habilidades y hechizos</span>
+      </button>
+      <button type="button" class="nav-button" data-action="notes" aria-label="Notas">
+        <i class="fa-solid fa-hand-sparkles" aria-hidden="true"></i>
+        <span class="sr-only">Notas</span>
+      </button>
+      <button type="button" class="nav-button" data-action="settings" aria-label="Opciones">
+        <i class="fa-solid fa-gear" aria-hidden="true"></i>
+        <span class="sr-only">Opciones</span>
+      </button>
+    </nav>
   </div>
 
   <div id="characterEditor" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
