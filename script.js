@@ -87,15 +87,24 @@ function normalizeStatValue(value) {
 }
 
 function slugify(text) {
-  return text
-    .toString()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-')
-    .substring(0, 64) || 'personaje';
+  if (text === null || text === undefined) {
+    return 'personaje';
+  }
+
+  let value = String(text);
+
+  if (typeof value.normalize === 'function') {
+    value = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-')
+      .substring(0, 64) || 'personaje'
+  );
 }
 
 function normalizeCharacter(character) {
@@ -226,6 +235,19 @@ function renderCharacterList() {
 
     card.addEventListener('click', () => {
       selectCharacter(character.id);
+    });
+
+    const editButton = card.querySelector('.icon-button.edit');
+    const deleteButton = card.querySelector('.icon-button.delete');
+
+    editButton?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openCharacterEditor(character);
+    });
+
+    deleteButton?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      deleteCharacter(character);
     });
 
     const editButton = card.querySelector('.icon-button.edit');
@@ -484,9 +506,6 @@ function wireInteractions() {
   });
   header.appendChild(removeBtn);
   abilityEl.appendChild(header);
-
-  const grid = document.createElement('div');
-  grid.className = 'form-grid two-col';
 
   elements.backToSelect?.addEventListener('click', () => {
     elements.screenSheet?.classList.add('hidden');
