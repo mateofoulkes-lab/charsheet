@@ -249,6 +249,13 @@
           </div>
         </div>
       </section>
+      <section class="sheet-abilities" id="sheetActiveAbilities">
+        <header class="sheet-abilities-header">
+          <h3>Habilidades activas</h3>
+          <p class="sheet-abilities-subtitle">Seleccioná una habilidad para ver sus detalles.</p>
+        </header>
+        <div class="sheet-ability-list" id="sheetActiveAbilityList" aria-live="polite"></div>
+      </section>
     </div>
     <div class="inventory-screen hidden" data-screen="inventory">
       <div class="inventory-header">
@@ -499,6 +506,41 @@
       <footer class="form-actions stat-modal-actions">
         <button type="button" class="btn secondary" id="cancelStatDetail">Cancelar</button>
         <button type="button" class="btn primary" id="saveStatDetail">Guardar</button>
+      </footer>
+    </div>
+  </div>
+
+  <div
+    id="sheetAbilityModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="sheetAbilityTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="sheet-ability"></div>
+    <div class="modal-dialog ability-detail-modal">
+      <header class="modal-header">
+        <h2 id="sheetAbilityTitle">Detalle de habilidad</h2>
+        <button type="button" class="icon-button close" id="closeSheetAbilityModal" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <div class="ability-detail-content">
+        <div class="ability-detail-media">
+          <img id="sheetAbilityImage" alt="Ilustración de la habilidad" />
+        </div>
+        <div class="ability-detail-info">
+          <p id="sheetAbilityDescription" class="ability-detail-description empty">Sin descripción disponible.</p>
+          <ul id="sheetAbilityFeatureList" class="ability-detail-features"></ul>
+        </div>
+      </div>
+      <div class="ability-detail-cooldown" id="sheetAbilityCooldown"></div>
+      <p id="sheetAbilityQuestion" class="ability-detail-question">¿Desea ejecutar esta habilidad?</p>
+      <footer class="form-actions ability-detail-actions">
+        <button type="button" class="btn secondary" id="cancelAbilityExecution">Cancelar</button>
+        <button type="button" class="btn primary" id="confirmAbilityExecution">Ejecutar habilidad</button>
       </footer>
     </div>
   </div>

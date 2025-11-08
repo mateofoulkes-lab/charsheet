@@ -61,6 +61,10 @@ const inventoryEditorState = {
   image: ''
 };
 
+const sheetAbilityState = {
+  selectedAbilityId: null
+};
+
 let characters = [];
 let selectedCharacterId = null;
 let passiveModifierCache = createEmptyModifierData();
@@ -223,15 +227,89 @@ function normalizeActiveAbility(ability) {
     return null;
   }
   const cooldown = Number.parseInt(ability.cooldown, 10);
+  const storedProgress = ability.cooldownProgress ?? ability.currentCooldown ?? ability.progress;
+  const parsedProgress = Number.parseInt(storedProgress, 10);
+  const isBasic =
+    ability.isBasic === true || ability.isBasic === 'true' || ability.id?.toString().trim() === 'ataque-basico';
   const normalized = {
     id: ability.id?.toString().trim() || slugify(title),
     title,
     description: ability.description?.toString().trim() || '',
     features: normalizeFeatureList(ability.features),
     cooldown: Number.isFinite(cooldown) && !Number.isNaN(cooldown) && cooldown > 0 ? cooldown : 0,
-    image: ability.image?.toString().trim() || ''
+    image: ability.image?.toString().trim() || '',
+    cooldownProgress: 0,
+    isBasic
   };
+  if (normalized.cooldown <= 0) {
+    normalized.cooldownProgress = 0;
+  } else if (Number.isNaN(parsedProgress)) {
+    normalized.cooldownProgress = normalized.cooldown;
+  } else {
+    const clamped = Math.max(0, Math.min(normalized.cooldown, parsedProgress));
+    normalized.cooldownProgress = clamped;
+  }
   return normalized;
+}
+
+function createBasicAttackAbility(characterName) {
+  const safeName = characterName?.toString().trim() || 'personaje';
+  return {
+    id: 'ataque-basico',
+    title: 'Ataque básico',
+    description: `Ataque básico de ${safeName}.`,
+    features: ['Inflige el daño base del personaje.'],
+    cooldown: 0,
+    cooldownProgress: 0,
+    image: '',
+    isBasic: true
+  };
+}
+
+function ensureBasicActiveAbility(list, characterName) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return [createBasicAttackAbility(characterName)];
+  }
+
+  const abilities = list.map((ability) => ({ ...ability }));
+  let basicIndex = abilities.findIndex((item) => item.isBasic);
+
+  if (basicIndex < 0) {
+    abilities[0].isBasic = true;
+    basicIndex = 0;
+  }
+
+  if (basicIndex !== 0) {
+    const [basic] = abilities.splice(basicIndex, 1);
+    abilities.unshift({ ...basic, isBasic: true });
+  }
+
+  abilities.forEach((ability, index) => {
+    if (index > 0 && ability.isBasic) {
+      ability.isBasic = false;
+    }
+    const total = Number.parseInt(ability.cooldown, 10);
+    const cooldownTotal = Number.isNaN(total) || total < 0 ? 0 : total;
+    ability.cooldown = cooldownTotal;
+    if (cooldownTotal <= 0) {
+      ability.cooldownProgress = 0;
+    } else {
+      const parsed = Number.parseInt(ability.cooldownProgress, 10);
+      const progress = Number.isNaN(parsed) ? cooldownTotal : parsed;
+      ability.cooldownProgress = Math.max(0, Math.min(cooldownTotal, progress));
+    }
+    if (index === 0 && ability.isBasic) {
+      if (!ability.title) {
+        ability.title = 'Ataque básico';
+      }
+      if (!ability.description) {
+        const safeName = characterName?.toString().trim() || 'el personaje';
+        ability.description = `Ataque básico de ${safeName}.`;
+      }
+    }
+  });
+
+  return abilities;
 }
 
 function normalizePassiveAbility(ability) {
@@ -294,10 +372,13 @@ function normalizeCharacter(character) {
     portrait = DEFAULT_PORTRAIT;
   }
 
-  const activeAbilities = dedupeById(
-    Array.isArray(character?.activeAbilities)
-      ? character.activeAbilities.map(normalizeActiveAbility).filter(Boolean)
-      : []
+  const activeAbilities = ensureBasicActiveAbility(
+    dedupeById(
+      Array.isArray(character?.activeAbilities)
+        ? character.activeAbilities.map(normalizeActiveAbility).filter(Boolean)
+        : []
+    ),
+    character?.name
   );
   const passiveAbilities = dedupeById(
     Array.isArray(character?.passiveAbilities)
@@ -418,6 +499,19 @@ function cacheElements() {
   elements.heroPortrait = document.querySelector('.hero-portrait');
   elements.heroToggle = document.getElementById('heroToggle');
   elements.heroToggleIcon = elements.heroToggle?.querySelector('use') ?? null;
+  elements.sheetAbilitySection = document.getElementById('sheetActiveAbilities');
+  elements.sheetAbilityList = document.getElementById('sheetActiveAbilityList');
+  elements.sheetAbilityModal = document.getElementById('sheetAbilityModal');
+  elements.sheetAbilityBackdrop = elements.sheetAbilityModal?.querySelector('.modal-backdrop') ?? null;
+  elements.sheetAbilityTitle = document.getElementById('sheetAbilityTitle');
+  elements.sheetAbilityImage = document.getElementById('sheetAbilityImage');
+  elements.sheetAbilityDescription = document.getElementById('sheetAbilityDescription');
+  elements.sheetAbilityFeatureList = document.getElementById('sheetAbilityFeatureList');
+  elements.sheetAbilityCooldown = document.getElementById('sheetAbilityCooldown');
+  elements.sheetAbilityQuestion = document.getElementById('sheetAbilityQuestion');
+  elements.sheetAbilityConfirm = document.getElementById('confirmAbilityExecution');
+  elements.sheetAbilityCancel = document.getElementById('cancelAbilityExecution');
+  elements.closeSheetAbilityModal = document.getElementById('closeSheetAbilityModal');
   elements.stats = document.querySelectorAll('.stat');
   elements.editorModal = document.getElementById('characterEditor');
   elements.editorBackdrop = document.getElementById('editorBackdrop');
@@ -687,11 +781,16 @@ function createAbilityCardElement(ability, type) {
   const cooldown = Number.isNaN(cooldownValue) || cooldownValue < 0 ? 0 : cooldownValue;
   const imageSrc = ability?.image?.toString().trim() || '';
   const abilityId = ability?.id?.toString().trim() || slugify(titleText);
+  const isBasic = ability?.isBasic === true;
 
   const card = document.createElement('article');
   card.className = `ability-card ability-${safeType}`;
+  if (isBasic) {
+    card.classList.add('ability-basic');
+  }
   card.dataset.id = abilityId;
   card.dataset.type = safeType;
+  card.dataset.basic = String(isBasic);
 
   const media = document.createElement('div');
   media.className = 'ability-card-media';
@@ -722,6 +821,13 @@ function createAbilityCardElement(ability, type) {
   const title = document.createElement('h4');
   title.textContent = titleText;
   header.appendChild(title);
+
+  if (isBasic) {
+    const basicBadge = document.createElement('span');
+    basicBadge.className = 'ability-basic-badge';
+    basicBadge.textContent = 'Ataque básico';
+    header.appendChild(basicBadge);
+  }
 
   if (descriptionText) {
     const description = document.createElement('p');
@@ -812,13 +918,375 @@ function createAbilityCardElement(ability, type) {
   deleteButton.type = 'button';
   deleteButton.className = 'icon-button delete';
   deleteButton.dataset.action = 'delete';
-  deleteButton.title = `Eliminar ${titleText}`;
-  deleteButton.innerHTML = `${iconMarkup('trash')}<span>Borrar</span>`;
+  if (isBasic) {
+    deleteButton.disabled = true;
+    deleteButton.title = 'El ataque básico no se puede eliminar';
+    deleteButton.innerHTML = `${iconMarkup('trash')}<span>No disponible</span>`;
+  } else {
+    deleteButton.title = `Eliminar ${titleText}`;
+    deleteButton.innerHTML = `${iconMarkup('trash')}<span>Borrar</span>`;
+  }
   actions.appendChild(deleteButton);
 
   card.appendChild(actions);
 
   return card;
+}
+
+function clampCooldownProgressValue(total, value) {
+  if (!Number.isFinite(total) || total <= 0) {
+    return 0;
+  }
+  const numeric = Number.parseInt(value, 10);
+  if (Number.isNaN(numeric)) {
+    return total;
+  }
+  return Math.max(0, Math.min(total, numeric));
+}
+
+function getAbilityCooldownState(ability) {
+  const totalValue = Number.parseInt(ability?.cooldown, 10);
+  const total = Number.isNaN(totalValue) || totalValue < 0 ? 0 : totalValue;
+  const progress = clampCooldownProgressValue(total, ability?.cooldownProgress);
+  const remaining = total > 0 ? Math.max(0, total - progress) : 0;
+  const ready = total === 0 || progress >= total;
+  return { total, progress, remaining, ready };
+}
+
+function createCooldownTrackElement(total, progress) {
+  const track = document.createElement('div');
+  track.className = 'cooldown-track';
+  if (total <= 0) {
+    track.classList.add('cooldown-track-none');
+    track.textContent = 'Sin cooldown';
+    return track;
+  }
+
+  const clamped = clampCooldownProgressValue(total, progress);
+  track.style.setProperty('--cooldown-cells', total);
+  track.classList.toggle('is-ready', clamped >= total);
+  for (let index = 0; index < total; index += 1) {
+    const cell = document.createElement('span');
+    cell.className = 'cooldown-cell';
+    if (index < clamped) {
+      cell.classList.add('filled');
+    }
+    track.appendChild(cell);
+  }
+  return track;
+}
+
+function createSheetAbilityCard(ability) {
+  const { total, progress, remaining, ready } = getAbilityCooldownState(ability);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'sheet-ability-card';
+  button.dataset.abilityId = ability.id;
+  button.dataset.ready = String(ready);
+  if (ability.isBasic) {
+    button.classList.add('is-basic');
+  }
+  if (ready) {
+    button.classList.add('is-ready');
+    const readyLabel = `Ver detalles de ${ability.title}`;
+    button.title = readyLabel;
+    button.setAttribute('aria-label', readyLabel);
+  } else {
+    button.classList.add('is-cooldown');
+    const turnsLabel = remaining === 1 ? 'turno' : 'turnos';
+    const label = `${ability.title} en cooldown. Faltan ${remaining} ${turnsLabel}.`;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+  }
+
+  const media = document.createElement('div');
+  media.className = 'sheet-ability-media';
+  if (ability.image) {
+    const img = document.createElement('img');
+    img.src = withVersion(ability.image);
+    img.alt = `Ilustración de ${ability.title}`;
+    media.appendChild(img);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'sheet-ability-placeholder';
+    const icon = document.createElement('i');
+    icon.className = 'fa-solid fa-bolt';
+    icon.setAttribute('aria-hidden', 'true');
+    placeholder.appendChild(icon);
+    media.appendChild(placeholder);
+  }
+  button.appendChild(media);
+
+  const info = document.createElement('div');
+  info.className = 'sheet-ability-info';
+
+  const title = document.createElement('h4');
+  title.className = 'sheet-ability-title';
+  title.textContent = ability.title;
+  info.appendChild(title);
+
+  const effects = document.createElement('ul');
+  effects.className = 'sheet-ability-effects';
+  const featureLines = Array.isArray(ability.features) ? ability.features.filter(Boolean) : [];
+  let displayLines = featureLines.slice(0, 4);
+  if (displayLines.length === 0 && ability.description) {
+    displayLines = [ability.description];
+  }
+  if (displayLines.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'sheet-ability-effect-empty';
+    empty.textContent = 'Sin detalles disponibles.';
+    effects.appendChild(empty);
+  } else {
+    displayLines.forEach((line) => {
+      const item = document.createElement('li');
+      item.textContent = line;
+      effects.appendChild(item);
+    });
+  }
+  info.appendChild(effects);
+  button.appendChild(info);
+
+  const cooldownWrapper = document.createElement('div');
+  cooldownWrapper.className = 'sheet-ability-cooldown';
+  const track = createCooldownTrackElement(total, progress);
+  cooldownWrapper.appendChild(track);
+  button.appendChild(cooldownWrapper);
+
+  return button;
+}
+
+function createPassTurnCard() {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'sheetPassTurnCard';
+  button.className = 'sheet-ability-card pass-turn';
+  button.dataset.action = 'pass-turn';
+  button.title = 'Pasar turno';
+  button.setAttribute('aria-label', 'Pasar turno');
+
+  const media = document.createElement('div');
+  media.className = 'sheet-ability-media';
+  const placeholder = document.createElement('div');
+  placeholder.className = 'sheet-ability-placeholder pass-turn';
+  const icon = document.createElement('i');
+  icon.className = 'fa-solid fa-forward-step';
+  icon.setAttribute('aria-hidden', 'true');
+  placeholder.appendChild(icon);
+  media.appendChild(placeholder);
+  button.appendChild(media);
+
+  const info = document.createElement('div');
+  info.className = 'sheet-ability-info';
+  const title = document.createElement('h4');
+  title.className = 'sheet-ability-title';
+  title.textContent = 'Pasar turno';
+  info.appendChild(title);
+  const description = document.createElement('p');
+  description.className = 'sheet-ability-pass-turn-text';
+  description.textContent = 'Completa un turno sin ejecutar habilidades.';
+  info.appendChild(description);
+  button.appendChild(info);
+
+  const noteWrapper = document.createElement('div');
+  noteWrapper.className = 'sheet-ability-cooldown pass-turn';
+  const note = document.createElement('span');
+  note.className = 'sheet-ability-pass-turn-note';
+  note.textContent = 'Todas las habilidades recuperan 1 punto de cooldown.';
+  noteWrapper.appendChild(note);
+  button.appendChild(noteWrapper);
+
+  return button;
+}
+
+function renderSheetActiveAbilities(character) {
+  if (!elements.sheetAbilityList) return;
+  const abilities = Array.isArray(character?.activeAbilities) ? character.activeAbilities : [];
+
+  const fragment = document.createDocumentFragment();
+  if (abilities.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'sheet-ability-empty';
+    empty.textContent = 'No hay habilidades activas registradas.';
+    fragment.appendChild(empty);
+  } else {
+    abilities.forEach((ability) => {
+      if (!ability) return;
+      fragment.appendChild(createSheetAbilityCard(ability));
+    });
+  }
+
+  fragment.appendChild(createPassTurnCard());
+
+  elements.sheetAbilityList.innerHTML = '';
+  elements.sheetAbilityList.appendChild(fragment);
+
+  if (elements.sheetAbilitySection) {
+    elements.sheetAbilitySection.classList.remove('hidden');
+  }
+}
+
+function openSheetAbilityModal(ability) {
+  if (!elements.sheetAbilityModal) return;
+  sheetAbilityState.selectedAbilityId = ability.id;
+
+  const cooldownState = getAbilityCooldownState(ability);
+
+  if (elements.sheetAbilityTitle) {
+    elements.sheetAbilityTitle.textContent = ability.title;
+  }
+
+  if (elements.sheetAbilityImage) {
+    const imageSource = ability.image ? withVersion(ability.image) : withVersion(DEFAULT_ABILITY_IMAGE);
+    elements.sheetAbilityImage.src = imageSource;
+    elements.sheetAbilityImage.alt = `Ilustración de ${ability.title}`;
+    elements.sheetAbilityImage.classList.toggle('placeholder', !ability.image);
+  }
+
+  if (elements.sheetAbilityDescription) {
+    const description = ability.description?.toString().trim();
+    if (description) {
+      elements.sheetAbilityDescription.textContent = description;
+      elements.sheetAbilityDescription.classList.remove('empty');
+    } else {
+      elements.sheetAbilityDescription.textContent = 'Sin descripción disponible.';
+      elements.sheetAbilityDescription.classList.add('empty');
+    }
+  }
+
+  if (elements.sheetAbilityFeatureList) {
+    elements.sheetAbilityFeatureList.innerHTML = '';
+    const featureLines = Array.isArray(ability.features) ? ability.features.filter(Boolean) : [];
+    if (featureLines.length > 0) {
+      featureLines.forEach((feature) => {
+        const item = document.createElement('li');
+        item.textContent = feature;
+        elements.sheetAbilityFeatureList.appendChild(item);
+      });
+    } else {
+      const empty = document.createElement('li');
+      empty.className = 'ability-detail-feature-empty';
+      empty.textContent = 'Sin características adicionales.';
+      elements.sheetAbilityFeatureList.appendChild(empty);
+    }
+  }
+
+  if (elements.sheetAbilityCooldown) {
+    elements.sheetAbilityCooldown.innerHTML = '';
+    elements.sheetAbilityCooldown.appendChild(
+      createCooldownTrackElement(cooldownState.total, cooldownState.progress)
+    );
+  }
+
+  if (elements.sheetAbilityQuestion) {
+    if (cooldownState.ready) {
+      elements.sheetAbilityQuestion.textContent = '¿Desea ejecutar esta habilidad?';
+      elements.sheetAbilityQuestion.classList.remove('cooldown');
+    } else {
+      const turnsLabel = cooldownState.remaining === 1 ? 'turno' : 'turnos';
+      elements.sheetAbilityQuestion.textContent = `Esta habilidad está en cooldown. Faltan ${cooldownState.remaining} ${turnsLabel}.`;
+      elements.sheetAbilityQuestion.classList.add('cooldown');
+    }
+  }
+
+  if (elements.sheetAbilityConfirm) {
+    elements.sheetAbilityConfirm.disabled = !cooldownState.ready;
+    elements.sheetAbilityConfirm.textContent = cooldownState.ready
+      ? 'Ejecutar habilidad'
+      : 'En cooldown';
+  }
+
+  elements.sheetAbilityModal.classList.remove('hidden');
+  syncBodyModalState();
+
+  if (cooldownState.ready) {
+    elements.sheetAbilityConfirm?.focus({ preventScroll: true });
+  } else {
+    elements.sheetAbilityCancel?.focus({ preventScroll: true });
+  }
+}
+
+function closeSheetAbilityModal() {
+  if (!elements.sheetAbilityModal) return;
+  elements.sheetAbilityModal.classList.add('hidden');
+  sheetAbilityState.selectedAbilityId = null;
+  if (elements.sheetAbilityFeatureList) {
+    elements.sheetAbilityFeatureList.innerHTML = '';
+  }
+  if (elements.sheetAbilityCooldown) {
+    elements.sheetAbilityCooldown.innerHTML = '';
+  }
+  syncBodyModalState();
+}
+
+function handleSheetAbilityListClick(event) {
+  const button = event.target.closest('.sheet-ability-card');
+  if (!button || !elements.sheetAbilityList?.contains(button)) {
+    return;
+  }
+
+  const action = button.dataset.action;
+  if (action === 'pass-turn') {
+    const character = getSelectedCharacter();
+    if (!character) return;
+    const confirmed = window.confirm('¿Seguro que querés pasar el turno?');
+    if (!confirmed) return;
+    advanceTurn(character.id);
+    return;
+  }
+
+  const abilityId = button.dataset.abilityId;
+  if (!abilityId) return;
+  const character = getSelectedCharacter();
+  if (!character) return;
+  const ability = character.activeAbilities.find((item) => item.id === abilityId);
+  if (!ability) return;
+  openSheetAbilityModal(ability);
+}
+
+function handleAbilityExecutionConfirm() {
+  if (!sheetAbilityState.selectedAbilityId) return;
+  executeAbility(sheetAbilityState.selectedAbilityId);
+}
+
+function updateCooldownsAfterTurn(list, usedAbilityId = null) {
+  if (!Array.isArray(list)) return [];
+  return list.map((ability) => {
+    if (!ability) return ability;
+    const totalValue = Number.parseInt(ability.cooldown, 10);
+    const total = Number.isNaN(totalValue) || totalValue < 0 ? 0 : totalValue;
+    const progress = clampCooldownProgressValue(total, ability.cooldownProgress);
+    const next = { ...ability, cooldown: total };
+    if (total <= 0) {
+      next.cooldownProgress = 0;
+    } else if (usedAbilityId && ability.id === usedAbilityId) {
+      next.cooldownProgress = 0;
+    } else {
+      next.cooldownProgress = Math.min(total, progress + 1);
+    }
+    return next;
+  });
+}
+
+function advanceTurn(characterId, usedAbilityId = null) {
+  applyCharacterUpdate(characterId, (draft) => {
+    draft.activeAbilities = updateCooldownsAfterTurn(draft.activeAbilities, usedAbilityId);
+    return draft;
+  });
+}
+
+function executeAbility(abilityId) {
+  const character = getSelectedCharacter();
+  if (!character) return;
+  const ability = character.activeAbilities.find((item) => item.id === abilityId);
+  if (!ability) return;
+  const cooldownState = getAbilityCooldownState(ability);
+  if (!cooldownState.ready) {
+    window.alert('Esta habilidad todavía está en cooldown.');
+    return;
+  }
+  advanceTurn(character.id, abilityId);
+  closeSheetAbilityModal();
 }
 
 function createInventoryCardElement(item) {
@@ -1312,17 +1780,28 @@ function handleActiveAbilitySubmit(event) {
   }
 
   applyCharacterUpdate(characterId, (draft) => {
+    const list = draft.activeAbilities;
+    const abilityId =
+      abilityEditorState.editingId || ensureUniqueAbilityId(draft.activeAbilities, `${baseId}-activa`);
+    const index = list.findIndex((item) => item.id === abilityId);
+    const previous = index >= 0 ? list[index] : null;
     const ability = {
-      id:
-        abilityEditorState.editingId || ensureUniqueAbilityId(draft.activeAbilities, `${baseId}-activa`),
+      id: abilityId,
       title,
       description,
       features,
       cooldown,
-      image: abilityEditorState.image || ''
+      image: abilityEditorState.image || '',
+      isBasic: previous?.isBasic === true || abilityId === 'ataque-basico',
+      cooldownProgress: 0
     };
-    const list = draft.activeAbilities;
-    const index = list.findIndex((item) => item.id === ability.id);
+    if (ability.cooldown <= 0) {
+      ability.cooldownProgress = 0;
+    } else if (previous) {
+      ability.cooldownProgress = clampCooldownProgressValue(ability.cooldown, previous.cooldownProgress);
+    } else {
+      ability.cooldownProgress = ability.cooldown;
+    }
     if (index >= 0) {
       list[index] = ability;
     } else {
@@ -1699,6 +2178,10 @@ function handleAbilityListClick(event) {
     const abilities = type === 'active' ? character.activeAbilities : character.passiveAbilities;
     const ability = abilities.find((item) => item.id === abilityId);
     if (!ability) return;
+    if (type === 'active' && ability.isBasic) {
+      window.alert('El ataque básico no se puede eliminar.');
+      return;
+    }
     const confirmed = window.confirm(`¿Seguro que querés eliminar "${ability.title}"?`);
     if (!confirmed) return;
     applyCharacterUpdate(character.id, (draft) => {
@@ -1821,6 +2304,7 @@ function renderCharacterSheetView(character) {
     });
   }
   renderStatModifiers(character);
+  renderSheetActiveAbilities(character);
 }
 
 function showCharacterSheet(characterId) {
@@ -2122,6 +2606,11 @@ function wireInteractions() {
   elements.activeAbilityList?.addEventListener('click', handleAbilityListClick);
   elements.passiveAbilityList?.addEventListener('click', handleAbilityListClick);
   elements.inventoryList?.addEventListener('click', handleInventoryListClick);
+  elements.sheetAbilityList?.addEventListener('click', handleSheetAbilityListClick);
+  elements.sheetAbilityBackdrop?.addEventListener('click', closeSheetAbilityModal);
+  elements.closeSheetAbilityModal?.addEventListener('click', closeSheetAbilityModal);
+  elements.sheetAbilityCancel?.addEventListener('click', closeSheetAbilityModal);
+  elements.sheetAbilityConfirm?.addEventListener('click', handleAbilityExecutionConfirm);
   elements.statDetailBackdrop?.addEventListener('click', closeStatDetailModal);
   elements.closeStatDetail?.addEventListener('click', closeStatDetailModal);
   elements.cancelStatDetail?.addEventListener('click', closeStatDetailModal);
@@ -2132,7 +2621,9 @@ function wireInteractions() {
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
-    if (!elements.activeAbilityModal?.classList.contains('hidden')) {
+    if (!elements.sheetAbilityModal?.classList.contains('hidden')) {
+      closeSheetAbilityModal();
+    } else if (!elements.activeAbilityModal?.classList.contains('hidden')) {
       closeActiveAbilityModal();
     } else if (!elements.passiveAbilityModal?.classList.contains('hidden')) {
       closePassiveAbilityModal();
