@@ -481,6 +481,184 @@ function normalizeInventoryItem(item) {
   };
 }
 
+function migrateLegacyActiveAbility(ability) {
+  if (!ability || typeof ability !== 'object') return null;
+  const migrated = { ...ability };
+
+  if (migrated.title === undefined) {
+    migrated.title = ability.titulo ?? ability.nombre ?? '';
+  }
+  if (migrated.description === undefined) {
+    migrated.description = ability.descripcion ?? ability.detalle ?? '';
+  }
+  if (migrated.features === undefined) {
+    const featuresSource =
+      ability.caracteristicas ?? ability.rasgos ?? ability.efectos ?? ability.detalles ?? ability.descripcionLarga;
+    if (Array.isArray(featuresSource)) {
+      migrated.features = featuresSource;
+    } else if (featuresSource !== undefined && featuresSource !== null) {
+      migrated.features = featuresSource.toString();
+    }
+  }
+  if (migrated.cooldown === undefined) {
+    migrated.cooldown = ability.enfriamiento ?? ability.cooldown ?? ability.cd ?? ability.cooldownTotal;
+  }
+  if (migrated.cooldownProgress === undefined) {
+    migrated.cooldownProgress =
+      ability.progresoEnfriamiento ??
+      ability.progresoCooldown ??
+      ability.progreso ??
+      ability.cooldownActual ??
+      ability.actualCooldown;
+  }
+  if (migrated.effectDuration === undefined) {
+    migrated.effectDuration = ability.duracion ?? ability.turnos ?? ability.duracionEfecto ?? ability.efectoDuracion;
+  }
+  if (migrated.image === undefined) {
+    migrated.image = ability.imagen ?? ability.icono ?? '';
+  }
+  if (migrated.isBasic === undefined) {
+    migrated.isBasic = ability.esBasica ?? ability.basica ?? false;
+  }
+  if (migrated.id === undefined) {
+    migrated.id = ability.identificador ?? ability.slug ?? ability.codigo ?? ability.uuid ?? null;
+  }
+
+  return migrated;
+}
+
+function migrateLegacyPassiveAbility(ability) {
+  if (!ability || typeof ability !== 'object') return null;
+  const migrated = { ...ability };
+
+  if (migrated.title === undefined) {
+    migrated.title = ability.titulo ?? ability.nombre ?? '';
+  }
+  if (migrated.description === undefined) {
+    migrated.description = ability.descripcion ?? ability.detalle ?? '';
+  }
+  if (migrated.features === undefined) {
+    const featuresSource = ability.caracteristicas ?? ability.rasgos ?? ability.efectos ?? ability.detalles;
+    if (Array.isArray(featuresSource)) {
+      migrated.features = featuresSource;
+    } else if (featuresSource !== undefined && featuresSource !== null) {
+      migrated.features = featuresSource.toString();
+    }
+  }
+  if (!Array.isArray(migrated.modifiers) && Array.isArray(ability.modificadores)) {
+    migrated.modifiers = ability.modificadores
+      .map((modifier) => {
+        if (!modifier || typeof modifier !== 'object') return null;
+        const stat = modifier.stat ?? modifier.estadistica ?? modifier.atributo ?? modifier.clave;
+        const value = modifier.value ?? modifier.valor ?? modifier.cantidad ?? modifier.modificador;
+        if (stat === undefined || value === undefined) {
+          return null;
+        }
+        return { stat, value };
+      })
+      .filter(Boolean);
+  }
+  if (migrated.cooldown === undefined) {
+    migrated.cooldown = ability.enfriamiento ?? ability.cooldown ?? ability.cd ?? ability.cooldownTotal;
+  }
+  if (migrated.effectDuration === undefined) {
+    migrated.effectDuration = ability.duracion ?? ability.turnos ?? ability.duracionEfecto;
+  }
+  if (migrated.id === undefined) {
+    migrated.id = ability.identificador ?? ability.slug ?? ability.codigo ?? ability.uuid ?? null;
+  }
+
+  return migrated;
+}
+
+function migrateLegacyInventoryItem(item) {
+  if (!item || typeof item !== 'object') return null;
+  const migrated = { ...item };
+
+  if (migrated.title === undefined) {
+    migrated.title = item.titulo ?? item.nombre ?? '';
+  }
+  if (migrated.description === undefined) {
+    migrated.description = item.descripcion ?? item.detalle ?? '';
+  }
+  if (migrated.image === undefined) {
+    migrated.image = item.imagen ?? item.icono ?? '';
+  }
+  if (migrated.id === undefined) {
+    const legacyId = item.identificador ?? item.slug ?? item.codigo ?? item.uuid;
+    if (legacyId !== undefined && legacyId !== null && legacyId !== '') {
+      migrated.id = legacyId.toString().trim();
+    } else if (migrated.title) {
+      migrated.id = slugify(migrated.title);
+    }
+  }
+
+  return migrated;
+}
+
+function migrateLegacyCharacter(data) {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  const migrated = { ...data };
+
+  if (migrated.name === undefined) {
+    migrated.name = data.nombre ?? data.alias ?? '';
+  }
+  if (migrated.ancestry === undefined) {
+    migrated.ancestry = data.ascendencia ?? data.ancestria ?? data.raza ?? '';
+  }
+  if (migrated.clazz === undefined) {
+    migrated.clazz = data.clase ?? data.profesion ?? '';
+  }
+  if (migrated.level === undefined) {
+    migrated.level = data.nivel ?? data.level ?? data.lv;
+  }
+  if (migrated.group === undefined) {
+    migrated.group = data.grupo ?? data['compañia'] ?? data.compania ?? data.faccion;
+  }
+  if (migrated.campaign === undefined) {
+    migrated.campaign = data['campaña'] ?? data.campaña ?? data.campana ?? data.campanaActual;
+  }
+  if (migrated.portrait === undefined) {
+    migrated.portrait = data.retrato ?? data.imagen ?? data.avatar;
+  }
+  if (migrated.notes === undefined) {
+    migrated.notes = data.notas ?? '';
+  }
+  if (migrated.currentHealth === undefined) {
+    migrated.currentHealth = data.vidaActual ?? data.saludActual ?? data.hpActual;
+  }
+  if (!migrated.stats && typeof data.estadisticas === 'object' && data.estadisticas !== null) {
+    migrated.stats = { ...data.estadisticas };
+  }
+  if (migrated.id === undefined) {
+    migrated.id = data.identificador ?? data.slug ?? data.codigo ?? data.uuid;
+  }
+
+  if (!Array.isArray(migrated.activeAbilities) && Array.isArray(data.habilidadesActivas)) {
+    migrated.activeAbilities = data.habilidadesActivas.map(migrateLegacyActiveAbility).filter(Boolean);
+  }
+
+  if (!Array.isArray(migrated.passiveAbilities) && Array.isArray(data.habilidadesPasivas)) {
+    migrated.passiveAbilities = data.habilidadesPasivas.map(migrateLegacyPassiveAbility).filter(Boolean);
+  }
+
+  if (!Array.isArray(migrated.inventory)) {
+    const legacyInventory = Array.isArray(data.inventario)
+      ? data.inventario
+      : Array.isArray(data.objetos)
+        ? data.objetos
+        : null;
+    if (legacyInventory) {
+      migrated.inventory = legacyInventory.map(migrateLegacyInventoryItem).filter(Boolean);
+    }
+  }
+
+  return migrated;
+}
+
 function dedupeById(list) {
   if (!Array.isArray(list)) return [];
   const seen = new Set();
@@ -495,12 +673,13 @@ function dedupeById(list) {
 }
 
 function normalizeCharacter(character) {
+  const migratedCharacter = migrateLegacyCharacter(character);
   const normalizedStats = {};
   STAT_KEYS.forEach((key) => {
-    normalizedStats[key] = normalizeStatValue(character?.stats?.[key]);
+    normalizedStats[key] = normalizeStatValue(migratedCharacter?.stats?.[key]);
   });
 
-  let portrait = character?.portrait || DEFAULT_PORTRAIT;
+  let portrait = migratedCharacter?.portrait || DEFAULT_PORTRAIT;
   if (typeof portrait === 'string') {
     const trimmed = portrait.trim();
     portrait = trimmed && trimmed !== 'null' && trimmed !== 'undefined' ? trimmed : DEFAULT_PORTRAIT;
@@ -510,35 +689,35 @@ function normalizeCharacter(character) {
 
   const activeAbilities = ensureBasicActiveAbility(
     dedupeById(
-      Array.isArray(character?.activeAbilities)
-        ? character.activeAbilities.map(normalizeActiveAbility).filter(Boolean)
+      Array.isArray(migratedCharacter?.activeAbilities)
+        ? migratedCharacter.activeAbilities.map(normalizeActiveAbility).filter(Boolean)
         : []
     ),
-    character?.name
+    migratedCharacter?.name
   );
   const passiveAbilities = dedupeById(
-    Array.isArray(character?.passiveAbilities)
-      ? character.passiveAbilities.map(normalizePassiveAbility).filter(Boolean)
+    Array.isArray(migratedCharacter?.passiveAbilities)
+      ? migratedCharacter.passiveAbilities.map(normalizePassiveAbility).filter(Boolean)
       : []
   );
   const inventory = dedupeById(
-    Array.isArray(character?.inventory)
-      ? character.inventory.map(normalizeInventoryItem).filter(Boolean)
+    Array.isArray(migratedCharacter?.inventory)
+      ? migratedCharacter.inventory.map(normalizeInventoryItem).filter(Boolean)
       : []
   );
-  const notesValue = character?.notes;
+  const notesValue = migratedCharacter?.notes;
   const notes = notesValue === null || notesValue === undefined ? '' : notesValue.toString();
-  const currentHealth = normalizeCurrentHealth(character?.currentHealth, normalizedStats);
+  const currentHealth = normalizeCurrentHealth(migratedCharacter?.currentHealth, normalizedStats);
 
   const normalized = {
-    id: character?.id || slugify(character?.name || 'pj'),
-    name: character?.name?.trim() || 'Personaje sin nombre',
+    id: migratedCharacter?.id || slugify(migratedCharacter?.name || 'pj'),
+    name: migratedCharacter?.name?.trim() || 'Personaje sin nombre',
     portrait,
-    ancestry: character?.ancestry?.trim() || '',
-    clazz: character?.clazz?.trim() || '',
-    level: Number.parseInt(character?.level ?? 1, 10) || 1,
-    group: character?.group?.toString().trim() || '',
-    campaign: character?.campaign?.toString().trim() || '',
+    ancestry: migratedCharacter?.ancestry?.trim() || '',
+    clazz: migratedCharacter?.clazz?.trim() || '',
+    level: Number.parseInt(migratedCharacter?.level ?? 1, 10) || 1,
+    group: migratedCharacter?.group?.toString().trim() || '',
+    campaign: migratedCharacter?.campaign?.toString().trim() || '',
     stats: normalizedStats,
     activeAbilities,
     passiveAbilities,
