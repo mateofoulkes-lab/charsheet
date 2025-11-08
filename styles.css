@@ -508,6 +508,14 @@ body {
   font-size: 0.85rem;
 }
 
+.hero-affiliation {
+  margin: 0.2rem 0 0;
+  color: var(--color-gold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
 .hero-toggle {
   position: absolute;
   right: 1rem;
@@ -575,6 +583,11 @@ body {
 
 .hero-card.collapsed .hero-details {
   font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
+.hero-card.collapsed .hero-affiliation {
+  font-size: 0.68rem;
   letter-spacing: 0.08em;
 }
 

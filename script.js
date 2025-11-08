@@ -70,6 +70,11 @@ function getSelectedCharacter() {
   return characters.find((item) => item.id === selectedCharacterId) ?? null;
 }
 
+function getSelectedCharacter() {
+  if (!selectedCharacterId) return null;
+  return characters.find((item) => item.id === selectedCharacterId) ?? null;
+}
+
 function iconMarkup(name, { className = '', label = null } = {}) {
   if (!name) return '';
   const classes = ['icon', `icon-${name}`];
@@ -409,6 +414,7 @@ function cacheElements() {
   elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
+  elements.heroAffiliation = document.getElementById('heroAffiliation');
   elements.heroPortrait = document.querySelector('.hero-portrait');
   elements.heroToggle = document.getElementById('heroToggle');
   elements.heroToggleIcon = elements.heroToggle?.querySelector('use') ?? null;
