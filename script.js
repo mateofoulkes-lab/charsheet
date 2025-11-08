@@ -76,9 +76,9 @@ function getSelectedCharacter() {
   return characters.find((item) => item.id === selectedCharacterId) ?? null;
 }
 
-function getSelectedCharacter() {
-  if (!selectedCharacterId) return null;
-  return characters.find((item) => item.id === selectedCharacterId) ?? null;
+function getCharacterById(id) {
+  if (!id) return null;
+  return characters.find((item) => item.id === id) ?? null;
 }
 
 function iconMarkup(name, { className = '', label = null } = {}) {
@@ -990,12 +990,18 @@ function renderCharacterList() {
 
     editButton?.addEventListener('click', (event) => {
       event.stopPropagation();
-      openCharacterEditor(character);
+      const latest = getCharacterById(character.id) ?? character;
+      openCharacterEditor(latest);
     });
 
     exportButton?.addEventListener('click', async (event) => {
       event.stopPropagation();
-      await exportCharacter(character);
+      const latest = getCharacterById(character.id);
+      if (!latest) {
+        window.alert('No se pudo encontrar el personaje para exportar.');
+        return;
+      }
+      await exportCharacter(latest);
     });
 
     deleteButton?.addEventListener('click', (event) => {
