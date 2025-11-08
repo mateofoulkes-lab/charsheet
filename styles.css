@@ -205,6 +205,17 @@ body {
   text-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
+.select-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.select-actions .btn {
+  flex-shrink: 0;
+}
+
 .character-list {
   flex: 1;
   overflow-y: auto;
@@ -312,6 +323,10 @@ body {
 .icon-button.danger,
 .icon-button.delete {
   color: var(--color-danger);
+}
+
+.icon-button.export {
+  color: var(--color-gold-bright);
 }
 
 .icon-button:hover {
