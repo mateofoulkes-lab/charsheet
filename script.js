@@ -16,6 +16,8 @@ const STAT_LABELS = {
 const DEFAULT_ABILITY_IMAGE =
   'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIj48cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgcng9IjE2IiBmaWxsPSIlMjMyYjIxM2EiLz48cGF0aCBkPSJNNjAgMThsMTIuOSAyNi4yIDI4LjkgNC4yLTIxIDE5LjYgNSAyOC41TDYwIDgzLjIgMzQuMiA5Ni41bDUtMjguNS0yMS0xOS42IDI4LjktNC4yeiIgZmlsbD0iJTIzZjRjODZhIiBvcGFjaXR5PSIwLjkiLz48L3N2Zz4=';
 const MAX_DISPLAY_COOLDOWN = 12;
+const CHARACTER_EXPORT_VERSION = 1;
+const CHARACTER_EXPORT_EXTENSION = '.charsheet.json';
 
 const defaultCharacters = [
   {
@@ -96,6 +98,119 @@ function withVersion(path) {
   }
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}v=${window.APP_VERSION}`;
+}
+
+function isDataUrl(value) {
+  if (typeof value !== 'string') return false;
+  return value.trim().startsWith('data:');
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(reader.result?.toString() ?? '');
+    };
+    reader.onerror = () => {
+      reject(reader.error || new Error('No se pudo leer el archivo.'));
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function ensureDataUrl(source) {
+  const trimmed = source?.toString().trim() || '';
+  if (!trimmed) {
+    return '';
+  }
+  if (isDataUrl(trimmed)) {
+    return trimmed;
+  }
+  try {
+    const response = await fetch(withVersion(trimmed));
+    if (!response.ok) {
+      throw new Error(`Estado ${response.status}`);
+    }
+    const blob = await response.blob();
+    return await blobToDataUrl(blob);
+  } catch (error) {
+    console.warn('No se pudo convertir la imagen a data URL para exportar:', error);
+    return trimmed;
+  }
+}
+
+async function prepareCharacterForExport(character) {
+  if (!character) {
+    throw new Error('No hay personaje para exportar.');
+  }
+
+  const exportable = JSON.parse(JSON.stringify(character));
+  exportable.portrait = await ensureDataUrl(character.portrait || DEFAULT_PORTRAIT);
+
+  const activeAbilities = Array.isArray(character.activeAbilities)
+    ? character.activeAbilities.filter(Boolean)
+    : [];
+  exportable.activeAbilities = await Promise.all(
+    activeAbilities.map(async (ability) => {
+      const copy = JSON.parse(JSON.stringify(ability));
+      copy.image = await ensureDataUrl(ability?.image || '');
+      return copy;
+    })
+  );
+
+  const passiveAbilities = Array.isArray(character.passiveAbilities)
+    ? character.passiveAbilities.filter(Boolean)
+    : [];
+  exportable.passiveAbilities = passiveAbilities.map((ability) => JSON.parse(JSON.stringify(ability)));
+
+  const inventoryItems = Array.isArray(character.inventory) ? character.inventory.filter(Boolean) : [];
+  exportable.inventory = await Promise.all(
+    inventoryItems.map(async (item) => {
+      const copy = JSON.parse(JSON.stringify(item));
+      copy.image = await ensureDataUrl(item?.image || '');
+      return copy;
+    })
+  );
+
+  return {
+    version: CHARACTER_EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    character: exportable
+  };
+}
+
+function createExportFilename(name) {
+  const base = slugify(name || 'personaje');
+  return `${base}${CHARACTER_EXPORT_EXTENSION}`;
+}
+
+function downloadTextFile(filename, contents) {
+  const blob = new Blob([contents], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
+async function exportCharacter(character) {
+  if (!character) {
+    window.alert('Seleccioná un personaje antes de exportar.');
+    return;
+  }
+  try {
+    const payload = await prepareCharacterForExport(character);
+    const json = JSON.stringify(payload, null, 2);
+    const filename = createExportFilename(character.name);
+    downloadTextFile(filename, json);
+  } catch (error) {
+    console.error('No se pudo exportar el personaje:', error);
+    window.alert('No se pudo exportar el personaje. Intentá nuevamente.');
+  }
 }
 
 function safeGetItem(key) {
@@ -501,6 +616,8 @@ function ensureUniqueInventoryId(list, baseId) {
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
+  elements.importCharacterBtn = document.getElementById('importCharacterBtn');
+  elements.importCharacterInput = document.getElementById('importCharacterInput');
   elements.navBack = document.querySelector('.bottom-bar [data-action="back"]');
   elements.navSheet = document.querySelector('.bottom-bar [data-action="sheet"]');
   elements.navInventory = document.querySelector('.bottom-bar [data-action="inventory"]');
@@ -673,6 +790,10 @@ function renderCharacterList() {
           ${iconMarkup('pen-to-square')}
           <span>Editar</span>
         </button>
+        <button class="icon-button export" type="button" title="Exportar ${character.name}">
+          ${iconMarkup('download')}
+          <span>Exportar</span>
+        </button>
         <button class="icon-button delete" type="button" title="Eliminar ${character.name}">
           ${iconMarkup('trash')}
           <span>Borrar</span>
@@ -686,10 +807,16 @@ function renderCharacterList() {
 
     const editButton = card.querySelector('.icon-button.edit');
     const deleteButton = card.querySelector('.icon-button.delete');
+    const exportButton = card.querySelector('.icon-button.export');
 
     editButton?.addEventListener('click', (event) => {
       event.stopPropagation();
       openCharacterEditor(character);
+    });
+
+    exportButton?.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      await exportCharacter(character);
     });
 
     deleteButton?.addEventListener('click', (event) => {
@@ -2638,10 +2765,66 @@ function handleFormSubmit(event) {
   }
 }
 
+function resetImportInput() {
+  if (elements.importCharacterInput) {
+    elements.importCharacterInput.value = '';
+  }
+}
+
+async function handleImportCharacterFile(event) {
+  const input = event.target;
+  const file = input?.files?.[0];
+  if (!file) {
+    resetImportInput();
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (parseError) {
+      throw new Error('El archivo no tiene un formato válido.');
+    }
+
+    const payload = parsed && typeof parsed === 'object' && parsed.character ? parsed.character : parsed;
+    const version = parsed?.version ?? CHARACTER_EXPORT_VERSION;
+
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('El archivo de personaje no es compatible.');
+    }
+
+    if (parsed?.version !== undefined && version !== CHARACTER_EXPORT_VERSION) {
+      throw new Error('El archivo de personaje no es compatible con esta versión de la aplicación.');
+    }
+
+    const normalized = normalizeCharacter(payload);
+    const baseId = normalized.id ? normalized.id : slugify(normalized.name);
+    normalized.id = ensureUniqueId(baseId);
+
+    characters = [...characters, normalized];
+    saveCharacters(characters);
+    selectCharacter(normalized.id);
+    window.alert(`Se importó "${normalized.name}" correctamente.`);
+  } catch (error) {
+    console.error('No se pudo importar el personaje:', error);
+    window.alert(error.message || 'No se pudo importar el personaje. Verificá el archivo e intentá de nuevo.');
+  } finally {
+    resetImportInput();
+  }
+}
+
 function wireInteractions() {
   elements.createCharacterBtn?.addEventListener('click', () => {
     openCharacterEditor();
   });
+  elements.importCharacterBtn?.addEventListener('click', () => {
+    if (!elements.importCharacterInput) return;
+    elements.importCharacterInput.value = '';
+    elements.importCharacterInput.click();
+  });
+  elements.importCharacterInput?.addEventListener('change', handleImportCharacterFile);
   elements.navBack?.addEventListener('click', () => {
     showScreen('select');
     updateNavState(null);
