@@ -540,6 +540,7 @@
       <p id="sheetAbilityQuestion" class="ability-detail-question">¿Desea ejecutar esta habilidad?</p>
       <footer class="form-actions ability-detail-actions">
         <button type="button" class="btn secondary" id="cancelAbilityExecution">Cancelar</button>
+        <button type="button" class="btn tertiary hidden" id="resetAbilityCooldown">Resetear cooldown</button>
         <button type="button" class="btn primary" id="confirmAbilityExecution">Ejecutar habilidad</button>
       </footer>
     </div>
@@ -632,6 +633,14 @@
           <label class="form-field stacked">
             Características (una por línea)
             <textarea id="passiveAbilityFeatures" name="features" rows="4"></textarea>
+          </label>
+          <label class="form-field stacked">
+            Turnos de cooldown
+            <input id="passiveAbilityCooldown" name="cooldown" type="number" min="0" value="0" />
+          </label>
+          <label class="form-field stacked">
+            Duración del efecto (turnos)
+            <input id="passiveAbilityDuration" name="effectDuration" type="number" min="0" value="0" />
           </label>
         </div>
         <section class="modifier-section">
