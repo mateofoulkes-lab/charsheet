@@ -443,6 +443,67 @@
   </div>
 
   <div
+    id="statDetailModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="statDetailTitle"
+  >
+    <div class="modal-backdrop" data-close-modal="stat"></div>
+    <div class="modal-dialog stat-modal">
+      <header class="modal-header">
+        <h2 id="statDetailTitle">Detalle de estadística</h2>
+        <button type="button" class="icon-button close" id="closeStatDetail" aria-label="Cerrar">
+          <svg class="icon icon-xmark" aria-hidden="true" focusable="false">
+            <use href="#icon-xmark" xlink:href="#icon-xmark"></use>
+          </svg>
+        </button>
+      </header>
+      <div class="stat-modal-content">
+        <p class="stat-modal-intro" id="statDetailIntro"></p>
+        <ul class="stat-modifier-list" id="statModifierList" aria-live="polite"></ul>
+        <div class="health-controls hidden" id="healthControlSection">
+          <h3>Puntos de vida</h3>
+          <div class="health-display" id="healthDisplay"></div>
+          <div class="health-input-row">
+            <button
+              type="button"
+              class="btn tertiary"
+              id="healthDecrement"
+              aria-label="Restar un punto de vida"
+            >
+              <i class="fa-solid fa-minus" aria-hidden="true"></i>
+            </button>
+            <input
+              id="healthCurrentInput"
+              type="number"
+              min="0"
+              step="1"
+              inputmode="numeric"
+              aria-label="Puntos de vida actuales"
+            />
+            <button
+              type="button"
+              class="btn tertiary"
+              id="healthIncrement"
+              aria-label="Sumar un punto de vida"
+            >
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+            </button>
+          </div>
+          <p class="health-max-label">
+            Vida total: <span id="healthMaxValue">0</span>
+          </p>
+        </div>
+      </div>
+      <footer class="form-actions stat-modal-actions">
+        <button type="button" class="btn secondary" id="cancelStatDetail">Cancelar</button>
+        <button type="button" class="btn primary" id="saveStatDetail">Guardar</button>
+      </footer>
+    </div>
+  </div>
+
+  <div
     id="activeAbilityModal"
     class="modal hidden"
     role="dialog"

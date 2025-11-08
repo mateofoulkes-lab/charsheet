@@ -35,6 +35,7 @@ const defaultCharacters = [
       movimiento: '3',
       alcance: '3'
     },
+    currentHealth: 30,
     activeAbilities: [],
     passiveAbilities: [],
     inventory: [],
@@ -62,6 +63,12 @@ const inventoryEditorState = {
 
 let characters = [];
 let selectedCharacterId = null;
+let passiveModifierCache = createEmptyModifierData();
+
+function getSelectedCharacter() {
+  if (!selectedCharacterId) return null;
+  return characters.find((item) => item.id === selectedCharacterId) ?? null;
+}
 
 function getSelectedCharacter() {
   if (!selectedCharacterId) return null;
@@ -113,6 +120,41 @@ function normalizeStatValue(value) {
   }
   const text = value.toString().trim();
   return text;
+}
+
+function normalizeCurrentHealth(value, stats = {}) {
+  const totalText = stats?.vida ?? '';
+  const max = Number.parseInt(totalText, 10);
+  const parsed = Number.parseInt(value, 10);
+  let current;
+  if (Number.isNaN(parsed)) {
+    current = Number.isNaN(max) ? 0 : max;
+  } else {
+    current = parsed;
+  }
+  if (!Number.isFinite(current)) {
+    current = 0;
+  }
+  if (current < 0) {
+    current = 0;
+  }
+  return current;
+}
+
+function createEmptyModifierData() {
+  const totals = {};
+  const details = {};
+  STAT_KEYS.forEach((key) => {
+    totals[key] = 0;
+    details[key] = [];
+  });
+  return { totals, details };
+}
+
+function getHealthDisplayMarkup(current, total) {
+  const safeCurrent = Number.isFinite(current) ? Math.trunc(current) : 0;
+  const safeTotal = Number.isFinite(total) ? Math.trunc(total) : 0;
+  return `<span class="stat-value-current">${safeCurrent}</span><span class="stat-value-separator">/</span><span class="stat-value-total">${safeTotal}</span>`;
 }
 
 function slugify(text) {
@@ -269,6 +311,7 @@ function normalizeCharacter(character) {
   );
   const notesValue = character?.notes;
   const notes = notesValue === null || notesValue === undefined ? '' : notesValue.toString();
+  const currentHealth = normalizeCurrentHealth(character?.currentHealth, normalizedStats);
 
   const normalized = {
     id: character?.id || slugify(character?.name || 'pj'),
@@ -283,7 +326,8 @@ function normalizeCharacter(character) {
     activeAbilities,
     passiveAbilities,
     inventory,
-    notes
+    notes,
+    currentHealth
   };
 
   return normalized;
@@ -428,6 +472,20 @@ function cacheElements() {
   elements.closePassiveAbility = document.getElementById('closePassiveAbility');
   elements.notesTextarea = document.getElementById('notesTextarea');
   elements.saveNotesButton = document.getElementById('saveNotesButton');
+  elements.statDetailModal = document.getElementById('statDetailModal');
+  elements.statDetailBackdrop = elements.statDetailModal?.querySelector('.modal-backdrop') ?? null;
+  elements.statDetailTitle = document.getElementById('statDetailTitle');
+  elements.statDetailIntro = document.getElementById('statDetailIntro');
+  elements.statModifierList = document.getElementById('statModifierList');
+  elements.healthControlSection = document.getElementById('healthControlSection');
+  elements.healthDisplay = document.getElementById('healthDisplay');
+  elements.healthCurrentInput = document.getElementById('healthCurrentInput');
+  elements.healthMaxValue = document.getElementById('healthMaxValue');
+  elements.healthIncrement = document.getElementById('healthIncrement');
+  elements.healthDecrement = document.getElementById('healthDecrement');
+  elements.saveStatDetail = document.getElementById('saveStatDetail');
+  elements.cancelStatDetail = document.getElementById('cancelStatDetail');
+  elements.closeStatDetail = document.getElementById('closeStatDetail');
 }
 
 function updateNavState(activeAction) {
@@ -527,33 +585,53 @@ function renderCharacterList() {
   elements.characterList.appendChild(fragment);
 }
 
-function aggregatePassiveModifiers(character) {
-  const totals = {};
-  STAT_KEYS.forEach((key) => {
-    totals[key] = 0;
-  });
+function computePassiveModifierData(character) {
+  const data = createEmptyModifierData();
   if (!character || !Array.isArray(character.passiveAbilities)) {
-    return totals;
+    return data;
   }
   character.passiveAbilities.forEach((ability) => {
     if (!ability || !Array.isArray(ability.modifiers)) return;
+    const title = ability.title?.toString().trim() || 'Habilidad sin título';
     ability.modifiers.forEach((modifier) => {
       if (!modifier || !STAT_KEYS.includes(modifier.stat)) return;
       const value = Number.parseInt(modifier.value, 10);
       if (Number.isNaN(value)) return;
-      totals[modifier.stat] += value;
+      data.totals[modifier.stat] += value;
+      data.details[modifier.stat].push({
+        abilityId: ability.id,
+        abilityTitle: title,
+        value
+      });
     });
   });
-  return totals;
+  return data;
 }
 
 function renderStatModifiers(character) {
   if (!elements.stats) return;
-  const totals = aggregatePassiveModifiers(character);
+  passiveModifierCache = computePassiveModifierData(character);
+  const totals = passiveModifierCache.totals;
   elements.stats.forEach((statElement) => {
     const key = statElement.dataset.stat;
+    if (!key) return;
     const container = statElement.querySelector('.stat-modifiers');
-    if (!container || !key) return;
+    const entries = passiveModifierCache.details[key] ?? [];
+    const hasModifiers = entries.length > 0;
+    const clickable = Boolean(character) && (hasModifiers || key === 'vida');
+    statElement.classList.toggle('has-modifiers', hasModifiers);
+    statElement.classList.toggle('clickable', clickable);
+    statElement.dataset.hasModifiers = hasModifiers ? 'true' : 'false';
+    if (clickable) {
+      statElement.setAttribute('role', 'button');
+      statElement.setAttribute('tabindex', '0');
+    } else {
+      statElement.removeAttribute('role');
+      statElement.removeAttribute('tabindex');
+    }
+    if (!container) {
+      return;
+    }
     const total = totals[key] ?? 0;
     if (!total) {
       container.innerHTML = '';
@@ -907,6 +985,191 @@ function renderNotesContent() {
   elements.notesTextarea.value = noteValue === null || noteValue === undefined ? '' : noteValue.toString();
 }
 
+function populateStatModifierList(entries) {
+  if (!elements.statModifierList) return;
+  elements.statModifierList.innerHTML = '';
+  if (!entries || entries.length === 0) {
+    const emptyItem = document.createElement('li');
+    emptyItem.className = 'stat-modifier-empty';
+    emptyItem.textContent = 'No hay habilidades que modifiquen esta estadística.';
+    elements.statModifierList.appendChild(emptyItem);
+    return;
+  }
+  entries.forEach((entry) => {
+    const item = document.createElement('li');
+    item.className = 'stat-modifier-entry';
+    if (entry.abilityId) {
+      item.dataset.abilityId = entry.abilityId;
+    }
+    const name = document.createElement('span');
+    name.className = 'stat-modifier-name';
+    name.textContent = entry.abilityTitle || 'Habilidad sin título';
+    const value = document.createElement('span');
+    const numericValue = Number.parseInt(entry.value, 10) || 0;
+    value.className = `stat-modifier-value ${numericValue >= 0 ? 'positive' : 'negative'}`;
+    value.textContent = `${numericValue >= 0 ? '+' : ''}${numericValue}`;
+    item.appendChild(name);
+    item.appendChild(value);
+    elements.statModifierList.appendChild(item);
+  });
+}
+
+function updateHealthControlState(total, current) {
+  if (!elements.healthControlSection) return;
+  const safeCurrent = Number.isFinite(current) ? Math.trunc(current) : 0;
+  const safeTotal = Number.isFinite(total) ? Math.trunc(total) : NaN;
+  if (elements.healthCurrentInput) {
+    elements.healthCurrentInput.value = safeCurrent;
+    elements.healthCurrentInput.min = '0';
+    elements.healthCurrentInput.removeAttribute('max');
+  }
+  if (elements.healthMaxValue) {
+    elements.healthMaxValue.textContent = Number.isNaN(safeTotal) ? '—' : safeTotal.toString();
+  }
+  if (elements.healthDisplay) {
+    if (!Number.isNaN(safeTotal) && safeCurrent !== safeTotal) {
+      elements.healthDisplay.innerHTML = getHealthDisplayMarkup(safeCurrent, safeTotal);
+    } else if (!Number.isNaN(safeTotal)) {
+      elements.healthDisplay.textContent = safeTotal.toString();
+    } else {
+      elements.healthDisplay.textContent = safeCurrent.toString();
+    }
+  }
+}
+
+function openStatDetailModal(statKey) {
+  if (!elements.statDetailModal) return;
+  const character = getSelectedCharacter();
+  if (!character) return;
+
+  const modifierData = computePassiveModifierData(character);
+  passiveModifierCache = modifierData;
+  const entries = modifierData.details[statKey] ?? [];
+  const isHealth = statKey === 'vida';
+  if (!isHealth && entries.length === 0) {
+    return;
+  }
+
+  const label = STAT_LABELS[statKey] || statKey.toUpperCase();
+  if (elements.statDetailTitle) {
+    elements.statDetailTitle.textContent = `Detalles de ${label}`;
+  }
+  if (elements.statDetailIntro) {
+    const introText = isHealth
+      ? entries.length > 0
+        ? 'Estas habilidades modifican la Vida. Ajustá los puntos actuales si es necesario.'
+        : 'Ajustá los puntos de vida actuales del personaje.'
+      : entries.length > 0
+        ? `Habilidades que modifican ${label}`
+        : `No hay habilidades que modifiquen ${label}`;
+    elements.statDetailIntro.textContent = introText;
+  }
+
+  populateStatModifierList(entries);
+
+  if (elements.healthControlSection) {
+    elements.healthControlSection.classList.toggle('hidden', !isHealth);
+  }
+  if (elements.saveStatDetail) {
+    elements.saveStatDetail.classList.toggle('hidden', !isHealth);
+  }
+
+  if (isHealth) {
+    const totalText = character.stats?.vida ?? '';
+    const totalNumber = Number.parseInt(totalText, 10);
+    const currentHealth = Number.isFinite(character.currentHealth)
+      ? character.currentHealth
+      : normalizeCurrentHealth(null, character.stats);
+    updateHealthControlState(totalNumber, currentHealth);
+  }
+
+  elements.statDetailModal.dataset.stat = statKey;
+  elements.statDetailModal.classList.remove('hidden');
+  syncBodyModalState();
+
+  if (isHealth && elements.healthCurrentInput) {
+    elements.healthCurrentInput.focus({ preventScroll: true });
+  } else {
+    elements.cancelStatDetail?.focus({ preventScroll: true });
+  }
+}
+
+function closeStatDetailModal() {
+  if (!elements.statDetailModal) return;
+  elements.statDetailModal.classList.add('hidden');
+  elements.statDetailModal.dataset.stat = '';
+  if (elements.statModifierList) {
+    elements.statModifierList.innerHTML = '';
+  }
+  syncBodyModalState();
+}
+
+function handleStatDetailSave() {
+  if (!elements.statDetailModal) return;
+  const statKey = elements.statDetailModal.dataset.stat;
+  if (statKey !== 'vida') {
+    closeStatDetailModal();
+    return;
+  }
+  if (!selectedCharacterId) {
+    window.alert('Seleccioná un personaje antes de ajustar la vida.');
+    return;
+  }
+  const rawValue = Number.parseInt(elements.healthCurrentInput?.value ?? '0', 10);
+  const nextValue = Number.isNaN(rawValue) ? 0 : Math.max(0, rawValue);
+  applyCharacterUpdate(selectedCharacterId, (draft) => {
+    draft.currentHealth = normalizeCurrentHealth(nextValue, draft.stats);
+    return draft;
+  });
+  closeStatDetailModal();
+}
+
+function adjustHealth(delta) {
+  if (!elements.healthCurrentInput || !elements.statDetailModal) return;
+  const rawValue = Number.parseInt(elements.healthCurrentInput.value, 10);
+  const currentValue = Number.isNaN(rawValue) ? 0 : rawValue;
+  const nextValue = Math.max(0, currentValue + delta);
+  elements.healthCurrentInput.value = nextValue;
+  const character = getSelectedCharacter();
+  if (!character) return;
+  const totalNumber = Number.parseInt(character.stats?.vida ?? '', 10);
+  updateHealthControlState(totalNumber, nextValue);
+}
+
+function handleHealthInputChange() {
+  if (!elements.healthCurrentInput) return;
+  const rawValue = Number.parseInt(elements.healthCurrentInput.value, 10);
+  const nextValue = Number.isNaN(rawValue) ? 0 : Math.max(0, rawValue);
+  elements.healthCurrentInput.value = nextValue;
+  const character = getSelectedCharacter();
+  if (!character) return;
+  const totalNumber = Number.parseInt(character.stats?.vida ?? '', 10);
+  updateHealthControlState(totalNumber, nextValue);
+}
+
+function handleStatInteraction(statElement) {
+  if (!statElement) return;
+  const statKey = statElement.dataset.stat;
+  if (!statKey) return;
+  const hasModifiers = statElement.dataset.hasModifiers === 'true';
+  if (statKey !== 'vida' && !hasModifiers) {
+    return;
+  }
+  openStatDetailModal(statKey);
+}
+
+function handleStatClick(event) {
+  handleStatInteraction(event.currentTarget);
+}
+
+function handleStatKeydown(event) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return;
+  }
+  event.preventDefault();
+  handleStatInteraction(event.currentTarget);
+}
+
 function showAbilitiesScreen() {
   renderAbilityLists();
   showScreen('abilities');
@@ -935,7 +1198,8 @@ function applyCharacterUpdate(characterId, updater) {
     activeAbilities: [...(current.activeAbilities || [])],
     passiveAbilities: [...(current.passiveAbilities || [])],
     inventory: [...(current.inventory || [])],
-    notes: current.notes ?? ''
+    notes: current.notes ?? '',
+    currentHealth: normalizeCurrentHealth(current.currentHealth, current.stats)
   };
   const maybeUpdated = updater ? updater(draft) : draft;
   const next = maybeUpdated || draft;
@@ -1537,7 +1801,22 @@ function renderCharacterSheetView(character) {
       const value = character.stats[key];
       const valueElement = statElement.querySelector('.stat-value');
       if (valueElement) {
-        valueElement.textContent = value || '—';
+        if (key === 'vida') {
+          const totalNumber = Number.parseInt(value, 10);
+          const hasNumericTotal = !Number.isNaN(totalNumber);
+          const currentHealth = Number.isFinite(character.currentHealth)
+            ? character.currentHealth
+            : normalizeCurrentHealth(null, character.stats);
+          if (hasNumericTotal && currentHealth !== totalNumber) {
+            valueElement.innerHTML = getHealthDisplayMarkup(currentHealth, totalNumber);
+          } else if (hasNumericTotal) {
+            valueElement.textContent = totalNumber.toString();
+          } else {
+            valueElement.textContent = value || '—';
+          }
+        } else {
+          valueElement.textContent = value || '—';
+        }
       }
     });
   }
@@ -1570,7 +1849,8 @@ function createBlankCharacter() {
     activeAbilities: [],
     passiveAbilities: [],
     inventory: [],
-    notes: ''
+    notes: '',
+    currentHealth: 0
   };
 }
 
@@ -1684,11 +1964,13 @@ function collectFormData(formData) {
     payload.passiveAbilities = Array.isArray(existing?.passiveAbilities) ? existing.passiveAbilities : [];
     payload.inventory = Array.isArray(existing?.inventory) ? existing.inventory : [];
     payload.notes = existing?.notes ?? '';
+    payload.currentHealth = normalizeCurrentHealth(existing?.currentHealth, payload.stats);
   } else {
     payload.activeAbilities = [];
     payload.passiveAbilities = [];
     payload.inventory = [];
     payload.notes = '';
+    payload.currentHealth = normalizeCurrentHealth(null, payload.stats);
   }
 
   if (!payload.id) {
@@ -1757,6 +2039,13 @@ function wireInteractions() {
     }
     showNotesScreen();
   });
+
+  if (elements.stats) {
+    elements.stats.forEach((statElement) => {
+      statElement.addEventListener('click', handleStatClick);
+      statElement.addEventListener('keydown', handleStatKeydown);
+    });
+  }
 
   if (elements.heroToggle && elements.heroCard) {
     elements.heroToggle.addEventListener('click', () => {
@@ -1833,6 +2122,13 @@ function wireInteractions() {
   elements.activeAbilityList?.addEventListener('click', handleAbilityListClick);
   elements.passiveAbilityList?.addEventListener('click', handleAbilityListClick);
   elements.inventoryList?.addEventListener('click', handleInventoryListClick);
+  elements.statDetailBackdrop?.addEventListener('click', closeStatDetailModal);
+  elements.closeStatDetail?.addEventListener('click', closeStatDetailModal);
+  elements.cancelStatDetail?.addEventListener('click', closeStatDetailModal);
+  elements.saveStatDetail?.addEventListener('click', handleStatDetailSave);
+  elements.healthIncrement?.addEventListener('click', () => adjustHealth(1));
+  elements.healthDecrement?.addEventListener('click', () => adjustHealth(-1));
+  elements.healthCurrentInput?.addEventListener('input', handleHealthInputChange);
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -1842,6 +2138,8 @@ function wireInteractions() {
       closePassiveAbilityModal();
     } else if (!elements.inventoryModal?.classList.contains('hidden')) {
       closeInventoryModal();
+    } else if (!elements.statDetailModal?.classList.contains('hidden')) {
+      closeStatDetailModal();
     } else if (!elements.editorModal?.classList.contains('hidden')) {
       closeCharacterEditor();
     }
