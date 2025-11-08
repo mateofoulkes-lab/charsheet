@@ -333,12 +333,21 @@ function normalizePassiveAbility(ability) {
   const modifiers = Array.isArray(ability.modifiers)
     ? ability.modifiers.map(normalizeAbilityModifier).filter(Boolean)
     : [];
+  const cooldownValue = Number.parseInt(ability.cooldown, 10);
+  const cooldown = Number.isNaN(cooldownValue) || cooldownValue < 0 ? 0 : cooldownValue;
+  const effectValue = Number.parseInt(
+    ability.effectDuration !== undefined ? ability.effectDuration : ability.duration,
+    10
+  );
+  const effectDuration = Number.isNaN(effectValue) || effectValue < 0 ? 0 : effectValue;
   const normalized = {
     id: ability.id?.toString().trim() || slugify(title),
     title,
     description: ability.description?.toString().trim() || '',
     features: normalizeFeatureList(ability.features),
-    modifiers
+    modifiers,
+    cooldown,
+    effectDuration
   };
   return normalized;
 }
@@ -574,6 +583,8 @@ function cacheElements() {
   elements.passiveAbilityTitle = document.getElementById('passiveAbilityTitle');
   elements.passiveAbilityDescription = document.getElementById('passiveAbilityDescription');
   elements.passiveAbilityFeatures = document.getElementById('passiveAbilityFeatures');
+  elements.passiveAbilityCooldown = document.getElementById('passiveAbilityCooldown');
+  elements.passiveAbilityDuration = document.getElementById('passiveAbilityDuration');
   elements.addPassiveModifier = document.getElementById('addPassiveModifier');
   elements.passiveModifierList = document.getElementById('passiveModifierList');
   elements.cancelPassiveAbility = document.getElementById('cancelPassiveAbility');
@@ -2033,6 +2044,20 @@ function openPassiveAbilityModal(ability = null) {
   if (elements.passiveAbilityFeatures) {
     elements.passiveAbilityFeatures.value = ability?.features?.join('\n') ?? '';
   }
+  if (elements.passiveAbilityCooldown) {
+    const cooldownValue = Number.parseInt(ability?.cooldown, 10);
+    elements.passiveAbilityCooldown.value = Number.isNaN(cooldownValue)
+      ? '0'
+      : cooldownValue.toString();
+  }
+  if (elements.passiveAbilityDuration) {
+    const rawEffect =
+      ability?.effectDuration !== undefined ? ability.effectDuration : ability?.duration;
+    const effectValue = Number.parseInt(rawEffect, 10);
+    elements.passiveAbilityDuration.value = Number.isNaN(effectValue)
+      ? '0'
+      : effectValue.toString();
+  }
   if (elements.passiveAbilityModalTitle) {
     elements.passiveAbilityModalTitle.textContent = ability
       ? 'Editar habilidad pasiva'
@@ -2070,6 +2095,10 @@ function handlePassiveAbilitySubmit(event) {
   }
   const description = formData.get('description')?.toString().trim() || '';
   const features = normalizeFeatureList(formData.get('features'));
+  const cooldownValue = Number.parseInt(formData.get('cooldown'), 10);
+  const cooldown = Number.isNaN(cooldownValue) || cooldownValue < 0 ? 0 : cooldownValue;
+  const effectValue = Number.parseInt(formData.get('effectDuration'), 10);
+  const effectDuration = Number.isNaN(effectValue) || effectValue < 0 ? 0 : effectValue;
   const modifiers = [];
   if (elements.passiveModifierList) {
     elements.passiveModifierList.querySelectorAll('.modifier-row').forEach((row) => {
@@ -2097,7 +2126,9 @@ function handlePassiveAbilitySubmit(event) {
       title,
       description,
       features,
-      modifiers
+      modifiers,
+      cooldown,
+      effectDuration
     };
     const list = draft.passiveAbilities;
     const index = list.findIndex((item) => item.id === ability.id);
