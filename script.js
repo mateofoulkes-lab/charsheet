@@ -229,6 +229,11 @@ function normalizeActiveAbility(ability) {
   const cooldown = Number.parseInt(ability.cooldown, 10);
   const storedProgress = ability.cooldownProgress ?? ability.currentCooldown ?? ability.progress;
   const parsedProgress = Number.parseInt(storedProgress, 10);
+  const effectValue = Number.parseInt(
+    ability.effectDuration !== undefined ? ability.effectDuration : ability.duration,
+    10
+  );
+  const effectDuration = Number.isNaN(effectValue) || effectValue < 0 ? 0 : effectValue;
   const isBasic =
     ability.isBasic === true || ability.isBasic === 'true' || ability.id?.toString().trim() === 'ataque-basico';
   const normalized = {
@@ -239,7 +244,8 @@ function normalizeActiveAbility(ability) {
     cooldown: Number.isFinite(cooldown) && !Number.isNaN(cooldown) && cooldown > 0 ? cooldown : 0,
     image: ability.image?.toString().trim() || '',
     cooldownProgress: 0,
-    isBasic
+    isBasic,
+    effectDuration
   };
   if (normalized.cooldown <= 0) {
     normalized.cooldownProgress = 0;
@@ -261,6 +267,7 @@ function createBasicAttackAbility(characterName) {
     features: ['Inflige el daño base del personaje.'],
     cooldown: 0,
     cooldownProgress: 0,
+    effectDuration: 0,
     image: '',
     isBasic: true
   };
@@ -291,6 +298,11 @@ function ensureBasicActiveAbility(list, characterName) {
     const total = Number.parseInt(ability.cooldown, 10);
     const cooldownTotal = Number.isNaN(total) || total < 0 ? 0 : total;
     ability.cooldown = cooldownTotal;
+    const effectValue = Number.parseInt(
+      ability.effectDuration !== undefined ? ability.effectDuration : ability.duration,
+      10
+    );
+    ability.effectDuration = Number.isNaN(effectValue) || effectValue < 0 ? 0 : effectValue;
     if (cooldownTotal <= 0) {
       ability.cooldownProgress = 0;
     } else {
@@ -562,6 +574,7 @@ function cacheElements() {
   elements.activeAbilityDescription = document.getElementById('activeAbilityDescription');
   elements.activeAbilityFeatures = document.getElementById('activeAbilityFeatures');
   elements.activeAbilityCooldown = document.getElementById('activeAbilityCooldown');
+  elements.activeAbilityDuration = document.getElementById('activeAbilityDuration');
   elements.activeAbilityPreview = document.getElementById('activeAbilityPreview');
   elements.activeAbilityImage = document.getElementById('activeAbilityImage');
   elements.clearActiveAbilityImage = document.getElementById('clearActiveAbilityImage');
@@ -790,11 +803,15 @@ function createAbilityCardElement(ability, type) {
         .filter(Boolean)
     : [];
   const cooldownValue = Number.parseInt(ability?.cooldown, 10);
-  const cooldown = Number.isNaN(cooldownValue) || cooldownValue < 0 ? 0 : cooldownValue;
+  const normalizedCooldown = Number.isNaN(cooldownValue) || cooldownValue < 0 ? 0 : cooldownValue;
   const imageSrc = ability?.image?.toString().trim() || '';
-  const effectDurationValue = Number.parseInt(ability?.effectDuration, 10);
-  const effectDuration =
-    Number.isNaN(effectDurationValue) || effectDurationValue < 0 ? 0 : effectDurationValue;
+  const rawEffectValue = Number.parseInt(
+    ability?.effectDuration !== undefined ? ability.effectDuration : ability?.duration,
+    10
+  );
+  const normalizedEffect = Number.isNaN(rawEffectValue) || rawEffectValue < 0 ? 0 : rawEffectValue;
+  const effectDuration = safeType === 'active' ? normalizedEffect : 0;
+  const cooldown = safeType === 'active' ? normalizedCooldown : 0;
   const abilityId = ability?.id?.toString().trim() || slugify(titleText);
   const isBasic = ability?.isBasic === true;
 
@@ -893,44 +910,15 @@ function createAbilityCardElement(ability, type) {
       }
     } else {
       cooldownContainer.classList.add('cooldown-none');
+      const effectTurnsLabel = effectDuration === 1 ? 'turno' : 'turnos';
+      if (effectDuration > 0) {
+        const label = `Sin cooldown. Duración del efecto ${effectDuration} ${effectTurnsLabel}.`;
+        cooldownContainer.setAttribute('aria-label', label);
+      }
       cooldownContainer.textContent = 'Sin cooldown';
     }
-    body.appendChild(cooldownContainer);
-  } else {
-    const cooldownContainer = document.createElement('div');
-    cooldownContainer.className = 'ability-cooldown passive';
-    const effectTurnsLabel = effectDuration === 1 ? 'turno' : 'turnos';
-    if (cooldown > 0) {
-      const cooldownLabel =
-        effectDuration > 0
-          ? `Cooldown de ${cooldown} turnos; duración del efecto ${effectDuration} ${effectTurnsLabel}`
-          : `Cooldown de ${cooldown} turnos`;
-      cooldownContainer.setAttribute('aria-label', cooldownLabel);
-      const dots = Math.min(cooldown, MAX_DISPLAY_COOLDOWN);
-      for (let index = 0; index < dots; index += 1) {
-        const dot = document.createElement('span');
-        dot.className = 'cooldown-dot';
-        cooldownContainer.appendChild(dot);
-      }
-      if (cooldown > MAX_DISPLAY_COOLDOWN) {
-        const extra = document.createElement('span');
-        extra.className = 'cooldown-extra';
-        extra.textContent = `+${cooldown - MAX_DISPLAY_COOLDOWN}`;
-        cooldownContainer.appendChild(extra);
-      }
-    } else {
-      const none = document.createElement('span');
-      none.className = 'cooldown-none';
-      none.textContent = 'Sin cooldown';
-      cooldownContainer.appendChild(none);
-      if (effectDuration > 0) {
-        cooldownContainer.setAttribute(
-          'aria-label',
-          `Duración del efecto ${effectDuration} ${effectTurnsLabel}`
-        );
-      }
-    }
     if (effectDuration > 0) {
+      const effectTurnsLabel = effectDuration === 1 ? 'turno' : 'turnos';
       const label = `Duración del efecto: ${effectDuration} ${effectTurnsLabel}`;
       const indicator = document.createElement('span');
       indicator.className = 'cooldown-effect-indicator';
@@ -941,6 +929,11 @@ function createAbilityCardElement(ability, type) {
       cooldownContainer.appendChild(indicator);
     }
     body.appendChild(cooldownContainer);
+  } else {
+    const passiveState = document.createElement('div');
+    passiveState.className = 'ability-passive-state';
+    passiveState.textContent = 'Efecto permanente';
+    body.appendChild(passiveState);
 
     const modifierList = document.createElement('ul');
     modifierList.className = 'ability-modifiers';
@@ -1043,6 +1036,11 @@ function createCooldownTrackElement(total, progress) {
 
 function createSheetAbilityCard(ability) {
   const { total, progress, remaining, ready } = getAbilityCooldownState(ability);
+  const effectValue = Number.parseInt(
+    ability?.effectDuration !== undefined ? ability.effectDuration : ability?.duration,
+    10
+  );
+  const effectDuration = Number.isNaN(effectValue) || effectValue < 0 ? 0 : effectValue;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'sheet-ability-card';
@@ -1116,6 +1114,17 @@ function createSheetAbilityCard(ability) {
   cooldownWrapper.className = 'sheet-ability-cooldown';
   const track = createCooldownTrackElement(total, progress);
   cooldownWrapper.appendChild(track);
+  if (effectDuration > 0) {
+    const effectTurnsLabel = effectDuration === 1 ? 'turno' : 'turnos';
+    const label = `Duración del efecto: ${effectDuration} ${effectTurnsLabel}`;
+    const indicator = document.createElement('span');
+    indicator.className = 'cooldown-effect-indicator';
+    indicator.textContent = effectDuration.toString();
+    indicator.setAttribute('role', 'img');
+    indicator.setAttribute('aria-label', label);
+    indicator.title = label;
+    cooldownWrapper.appendChild(indicator);
+  }
   button.appendChild(cooldownWrapper);
 
   return button;
@@ -1846,6 +1855,12 @@ function openActiveAbilityModal(ability = null) {
     const cooldown = Number.parseInt(ability?.cooldown, 10);
     elements.activeAbilityCooldown.value = Number.isNaN(cooldown) || cooldown < 0 ? 0 : cooldown;
   }
+  if (elements.activeAbilityDuration) {
+    const rawEffect =
+      ability?.effectDuration !== undefined ? ability.effectDuration : ability?.duration;
+    const effectValue = Number.parseInt(rawEffect, 10);
+    elements.activeAbilityDuration.value = Number.isNaN(effectValue) || effectValue < 0 ? 0 : effectValue;
+  }
   if (elements.activeAbilityModalTitle) {
     elements.activeAbilityModalTitle.textContent = ability ? 'Editar habilidad activa' : 'Nueva habilidad activa';
   }
@@ -1884,6 +1899,8 @@ function handleActiveAbilitySubmit(event) {
   const features = normalizeFeatureList(formData.get('features'));
   const cooldownValue = Number.parseInt(formData.get('cooldown'), 10);
   const cooldown = Number.isNaN(cooldownValue) || cooldownValue < 0 ? 0 : cooldownValue;
+  const effectValue = Number.parseInt(formData.get('effectDuration'), 10);
+  const effectDuration = Number.isNaN(effectValue) || effectValue < 0 ? 0 : effectValue;
   const baseId = slugify(title || 'habilidad-activa');
   const characterId = selectedCharacterId;
   if (!characterId) {
@@ -1903,6 +1920,7 @@ function handleActiveAbilitySubmit(event) {
       description,
       features,
       cooldown,
+      effectDuration,
       image: abilityEditorState.image || '',
       isBasic: previous?.isBasic === true || abilityId === 'ataque-basico',
       cooldownProgress: 0

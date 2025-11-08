@@ -1393,6 +1393,13 @@ body {
   line-height: 1;
 }
 
+.ability-passive-state {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-style: italic;
+}
+
 .cooldown-none {
   font-style: italic;
   color: rgba(255, 255, 255, 0.65);
