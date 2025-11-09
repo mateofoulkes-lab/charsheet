@@ -892,7 +892,17 @@ async function loadCharacters() {
     return idbStored;
   }
 
-  return defaultCharacters.map(normalizeCharacter);
+  // Sembrar personajes por defecto SOLO la primera vez
+  const seeded = safeGetItem('charsheet.seeded');
+  if (!seeded) {
+    const seededList = defaultCharacters.map(normalizeCharacter);
+    safeSetItem(STORAGE_KEY, JSON.stringify(seededList));
+    safeSetItem('charsheet.seeded', '1');
+    return seededList;
+  }
+
+  // Si no hay datos guardados y ya sembramos antes, devolver lista vacía
+  return [];
 }
 
 function saveCharacters(list) {
