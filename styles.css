@@ -241,9 +241,10 @@ body {
 .character-card {
   position: relative;
   display: grid;
-  grid-template-columns: 96px 1fr auto;
+  grid-template-columns: 96px 1fr;
+  grid-template-rows: auto 1fr;
   align-items: start;
-  gap: 1.25rem;
+  gap: 1.1rem 1.25rem;
   padding: 1rem 1.5rem 1rem 1rem;
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(28, 20, 12, 0.95), rgba(12, 8, 5, 0.95));
@@ -251,10 +252,7 @@ body {
   box-shadow: var(--shadow-soft);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
-}
-
-.character-card > * {
-  align-self: start;
+  height: 148px;
 }
 
 .character-card::before {
@@ -284,16 +282,17 @@ body {
   object-fit: cover;
   filter: saturate(1.1);
   align-self: center;
+  grid-row: 1 / span 2;
 }
 
 .card-actions {
-  grid-column: 3;
-  grid-row: 1;
+  grid-column: 2;
+  grid-row: 2;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: flex-start;
-  align-items: flex-end;
-  gap: 0.4rem;
+  gap: 0.6rem;
+  align-self: end;
 }
 
 .icon-button {
@@ -376,6 +375,8 @@ body {
 }
 
 .character-meta {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
