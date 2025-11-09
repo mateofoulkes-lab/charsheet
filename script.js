@@ -73,6 +73,7 @@ const sheetAbilityState = {
 let characters = [];
 let selectedCharacterId = null;
 let passiveModifierCache = createEmptyModifierData();
+let previousNonSettingsScreen = 'select';
 
 function getSelectedCharacter() {
   if (!selectedCharacterId) return null;
@@ -977,13 +978,16 @@ function cacheElements() {
   elements.navInventory = document.querySelector('.bottom-bar [data-action="inventory"]');
   elements.navAbilities = document.querySelector('.bottom-bar [data-action="abilities"]');
   elements.navNotes = document.querySelector('.bottom-bar [data-action="notes"]');
+  elements.navSettings = document.querySelector('.bottom-bar [data-action="settings"]');
   elements.navButtons = document.querySelectorAll('.bottom-bar .nav-button');
   elements.screenSelect = document.querySelector('[data-screen="select"]');
   elements.screenSheet = document.querySelector('[data-screen="sheet"]');
   elements.screenInventory = document.querySelector('[data-screen="inventory"]');
   elements.screenAbilities = document.querySelector('[data-screen="abilities"]');
   elements.screenNotes = document.querySelector('[data-screen="notes"]');
+  elements.screenSettings = document.querySelector('[data-screen="settings"]');
   elements.screens = document.querySelectorAll('[data-screen]');
+  elements.settingsBackButton = document.getElementById('settingsBackButton');
   elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
@@ -1095,6 +1099,9 @@ function showScreen(screenName) {
     const isTarget = screen.dataset.screen === screenName;
     screen.classList.toggle('hidden', !isTarget);
   });
+  if (screenName && screenName !== 'settings') {
+    previousNonSettingsScreen = screenName;
+  }
 }
 
 function getActiveScreen() {
@@ -2246,6 +2253,11 @@ function handleStatKeydown(event) {
   handleStatInteraction(event.currentTarget);
 }
 
+function showSelectScreen() {
+  showScreen('select');
+  updateNavState(null);
+}
+
 function showAbilitiesScreen() {
   renderAbilityLists();
   showScreen('abilities');
@@ -2262,6 +2274,50 @@ function showNotesScreen() {
   renderNotesContent();
   showScreen('notes');
   updateNavState('notes');
+}
+
+function showSettingsScreen() {
+  const active = getActiveScreen();
+  if (active && active !== 'settings') {
+    previousNonSettingsScreen = active;
+  }
+  showScreen('settings');
+  updateNavState('settings');
+}
+
+function restorePreviousScreenFromSettings() {
+  const target = previousNonSettingsScreen && previousNonSettingsScreen !== 'settings'
+    ? previousNonSettingsScreen
+    : 'select';
+
+  if (target === 'sheet') {
+    if (selectedCharacterId) {
+      const character = characters.find((item) => item.id === selectedCharacterId);
+      if (character) {
+        showCharacterSheet(selectedCharacterId);
+        return;
+      }
+    }
+    showSelectScreen();
+    return;
+  }
+
+  if (target === 'abilities') {
+    showAbilitiesScreen();
+    return;
+  }
+
+  if (target === 'inventory') {
+    showInventoryScreen();
+    return;
+  }
+
+  if (target === 'notes') {
+    showNotesScreen();
+    return;
+  }
+
+  showSelectScreen();
 }
 
 function applyCharacterUpdate(characterId, updater) {
@@ -2890,8 +2946,7 @@ function deleteCharacter(character) {
       showCharacterSheet(selectedCharacterId);
     }
   } else {
-    showScreen('select');
-    updateNavState(null);
+    showSelectScreen();
     updateInventoryControlsAvailability();
   }
 }
@@ -3186,8 +3241,7 @@ function wireInteractions() {
   });
   elements.importCharacterInput?.addEventListener('change', handleImportCharacterFile);
   elements.navBack?.addEventListener('click', () => {
-    showScreen('select');
-    updateNavState(null);
+    showSelectScreen();
   });
   elements.navSheet?.addEventListener('click', () => {
     if (!selectedCharacterId && characters[0]) {
@@ -3215,6 +3269,12 @@ function wireInteractions() {
       selectCharacter(characters[0].id);
     }
     showNotesScreen();
+  });
+  elements.navSettings?.addEventListener('click', () => {
+    showSettingsScreen();
+  });
+  elements.settingsBackButton?.addEventListener('click', () => {
+    restorePreviousScreenFromSettings();
   });
 
   if (elements.stats) {
@@ -3368,8 +3428,7 @@ async function init() {
     renderAbilityLists();
     renderInventoryList();
   } else {
-    showScreen('select');
-    updateNavState(null);
+    showSelectScreen();
     updateAbilityControlsAvailability();
     renderInventoryList();
   }

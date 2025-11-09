@@ -19,7 +19,7 @@
   />
   <link id="mainStylesheet" rel="stylesheet" href="" />
   <script>
-    window.APP_VERSION = 'v5';
+    window.APP_VERSION = 'v6';
     window.APP_VERSION_LABEL = window.APP_VERSION;
     window.DEFAULT_PORTRAIT =
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAA' +
@@ -147,9 +147,13 @@
     </symbol>
   </svg>
   <div id="app" class="app">
-    <div id="fa-check" style="padding:8px">
-      <i class="fa-solid fa-dice-d20 fa-spin"></i> Proyecto CoolDown
-    </div>
+    <header class="app-header">
+      <div class="app-brand">
+        <i class="fa-solid fa-dice-d20 fa-spin" aria-hidden="true"></i>
+        <span class="app-title">Proyecto CoolDown</span>
+      </div>
+      <span class="app-version" data-app-version></span>
+    </header>
     <div class="character-select" data-screen="select">
       <header class="select-header">
         <span class="app-version-badge" data-app-version></span>
@@ -159,13 +163,13 @@
             <svg class="icon icon-user-plus" aria-hidden="true" focusable="false">
               <use href="#icon-user-plus" xlink:href="#icon-user-plus"></use>
             </svg>
-            Crear Personaje
+            Crear PJ
           </button>
           <button class="btn secondary import-btn" type="button" id="importCharacterBtn">
             <svg class="icon icon-upload" aria-hidden="true" focusable="false">
               <use href="#icon-upload" xlink:href="#icon-upload"></use>
             </svg>
-            Importar Personaje
+            Importar PJ
           </button>
           <input
             type="file"
@@ -315,6 +319,22 @@
         </label>
         <div class="notes-actions">
           <button type="button" class="btn primary" id="saveNotesButton">Guardar</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-screen hidden" data-screen="settings">
+      <div class="settings-content">
+        <button type="button" class="btn secondary settings-back" id="settingsBackButton">
+          <svg class="icon icon-arrow-left" aria-hidden="true" focusable="false">
+            <use href="#icon-arrow-left" xlink:href="#icon-arrow-left"></use>
+          </svg>
+          Volver
+        </button>
+        <div class="settings-info">
+          <p>Proyecto CoolDown.</p>
+          <p>Prototipo de app realizada por Mateo Foulkes</p>
+          <p>(con alguito de chatgpt)</p>
+          <p>2025</p>
         </div>
       </div>
     </div>
