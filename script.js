@@ -970,6 +970,7 @@ function ensureUniqueInventoryId(list, baseId) {
 
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
+  elements.appHeader = document.querySelector('.app-header');
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
   elements.importCharacterBtn = document.getElementById('importCharacterBtn');
   elements.importCharacterInput = document.getElementById('importCharacterInput');
@@ -1090,6 +1091,15 @@ function updateNavState(activeAction) {
   });
 }
 
+function updateAppHeaderVisibility(screenName) {
+  if (!elements.appHeader || !(elements.appHeader instanceof HTMLElement)) {
+    elements.appHeader = document.querySelector('.app-header');
+  }
+  if (!elements.appHeader) return;
+  const shouldShow = screenName === 'settings';
+  elements.appHeader.classList.toggle('hidden', !shouldShow);
+}
+
 function showScreen(screenName) {
   if (!elements.screens || elements.screens.length === 0) {
     elements.screens = document.querySelectorAll('[data-screen]');
@@ -1099,6 +1109,7 @@ function showScreen(screenName) {
     const isTarget = screen.dataset.screen === screenName;
     screen.classList.toggle('hidden', !isTarget);
   });
+  updateAppHeaderVisibility(screenName);
   if (screenName && screenName !== 'settings') {
     previousNonSettingsScreen = screenName;
   }
