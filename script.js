@@ -74,6 +74,7 @@ let characters = [];
 let selectedCharacterId = null;
 let passiveModifierCache = createEmptyModifierData();
 let previousNonSettingsScreen = 'select';
+let appHeaderHeight = null;
 
 function getSelectedCharacter() {
   if (!selectedCharacterId) return null;
@@ -102,6 +103,39 @@ function withVersion(path) {
   }
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}v=${window.APP_VERSION}`;
+}
+
+function getVersionedPortraitSrc(value) {
+  const candidate = typeof value === 'string' && value.trim() ? value.trim() : DEFAULT_PORTRAIT;
+  return withVersion(candidate);
+}
+
+function ensurePortraitFallback(img) {
+  if (!img) return;
+  if (!img.dataset.usingPortraitFallback) {
+    img.dataset.usingPortraitFallback = 'false';
+  }
+  if (img.dataset.portraitFallbackBound === 'true') {
+    return;
+  }
+  img.dataset.portraitFallbackBound = 'true';
+  img.addEventListener('error', () => {
+    if (img.dataset.usingPortraitFallback === 'true') {
+      return;
+    }
+    img.dataset.usingPortraitFallback = 'true';
+    img.setAttribute('src', getVersionedPortraitSrc());
+  });
+}
+
+function setPortraitImage(img, src, { alt } = {}) {
+  if (!img) return;
+  ensurePortraitFallback(img);
+  if (alt) {
+    img.alt = alt;
+  }
+  img.dataset.usingPortraitFallback = 'false';
+  img.setAttribute('src', getVersionedPortraitSrc(src));
 }
 
 function isDataUrl(value) {
@@ -971,6 +1005,7 @@ function ensureUniqueInventoryId(list, baseId) {
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
   elements.appHeader = document.querySelector('.app-header');
+  ensureAppHeaderHeight();
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
   elements.importCharacterBtn = document.getElementById('importCharacterBtn');
   elements.importCharacterInput = document.getElementById('importCharacterInput');
@@ -1081,6 +1116,57 @@ function cacheElements() {
   elements.saveStatDetail = document.getElementById('saveStatDetail');
   elements.cancelStatDetail = document.getElementById('cancelStatDetail');
   elements.closeStatDetail = document.getElementById('closeStatDetail');
+
+  ensurePortraitFallback(elements.heroPortrait);
+  ensurePortraitFallback(elements.portraitPreview);
+}
+
+function ensureAppHeaderHeight() {
+  if (typeof document === 'undefined') return;
+  if (!elements.appHeader || !(elements.appHeader instanceof HTMLElement)) {
+    elements.appHeader = document.querySelector('.app-header');
+  }
+  const header = elements.appHeader;
+  if (!header) return;
+
+  const wasHidden = header.classList.contains('hidden');
+  const previousStyles = {
+    position: header.style.position,
+    visibility: header.style.visibility,
+    pointerEvents: header.style.pointerEvents,
+    width: header.style.width,
+    top: header.style.top,
+    left: header.style.left
+  };
+
+  if (wasHidden) {
+    header.style.visibility = 'hidden';
+    header.style.pointerEvents = 'none';
+    header.style.position = 'absolute';
+    header.style.width = '100%';
+    header.style.top = '0';
+    header.style.left = '0';
+    header.classList.remove('hidden');
+  }
+
+  const { height } = header.getBoundingClientRect();
+
+  if (wasHidden) {
+    header.classList.add('hidden');
+  }
+
+  header.style.position = previousStyles.position;
+  header.style.visibility = previousStyles.visibility;
+  header.style.pointerEvents = previousStyles.pointerEvents;
+  header.style.width = previousStyles.width;
+  header.style.top = previousStyles.top;
+  header.style.left = previousStyles.left;
+
+  const roundedHeight = Math.round(height);
+  if (roundedHeight > 0 && roundedHeight !== appHeaderHeight) {
+    appHeaderHeight = roundedHeight;
+    document.documentElement.style.setProperty('--app-header-height', `${roundedHeight}px`);
+  }
 }
 
 function updateNavState(activeAction) {
@@ -1092,6 +1178,7 @@ function updateNavState(activeAction) {
 }
 
 function updateAppHeaderVisibility(screenName) {
+  ensureAppHeaderHeight();
   if (!elements.appHeader || !(elements.appHeader instanceof HTMLElement)) {
     elements.appHeader = document.querySelector('.app-header');
   }
@@ -1133,7 +1220,6 @@ function renderCharacterList() {
     card.className = `character-card${character.id === selectedCharacterId ? ' active' : ''}`;
     card.dataset.id = character.id;
 
-    const portraitSrc = withVersion(character.portrait || DEFAULT_PORTRAIT);
     const metaParts = [character.ancestry, character.clazz]
       .map((part) => part?.trim())
       .filter(Boolean);
@@ -1151,7 +1237,7 @@ function renderCharacterList() {
     const affiliationLine = affiliationParts.join(' • ');
 
     card.innerHTML = `
-      <img src="${portraitSrc}" alt="Retrato de ${character.name}" loading="lazy" />
+      <img alt="Retrato de ${character.name}" loading="lazy" />
       <div class="character-meta">
         <h2>${character.name}</h2>
         <p class="character-meta-line">${metaLine || '&nbsp;'}</p>
@@ -1172,6 +1258,9 @@ function renderCharacterList() {
         </button>
       </div>
     `;
+
+    const portraitImg = card.querySelector('img');
+    setPortraitImage(portraitImg, character.portrait, { alt: `Retrato de ${character.name}` });
 
     card.addEventListener('click', () => {
       selectCharacter(character.id);
@@ -2977,8 +3066,7 @@ function renderCharacterSheetView(character) {
   }
 
   if (elements.heroPortrait) {
-    elements.heroPortrait.src = withVersion(character.portrait || DEFAULT_PORTRAIT);
-    elements.heroPortrait.alt = `Retrato de ${character.name}`;
+    setPortraitImage(elements.heroPortrait, character.portrait, { alt: `Retrato de ${character.name}` });
   }
 
   if (elements.stats) {
@@ -3101,7 +3189,7 @@ function fillEditorForm(character) {
 function updatePortraitPreview() {
   if (!elements.portraitPreview) return;
   const src = editorState.portrait || DEFAULT_PORTRAIT;
-  elements.portraitPreview.src = withVersion(src);
+  setPortraitImage(elements.portraitPreview, src);
 }
 
 function handlePortraitChange(event) {
@@ -3461,6 +3549,8 @@ if (document.readyState === 'loading') {
 } else {
   startApp();
 }
+
+window.addEventListener('load', ensureAppHeaderHeight);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

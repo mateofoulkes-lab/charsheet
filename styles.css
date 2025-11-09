@@ -15,6 +15,7 @@
   --shadow-strong: 0 20px 40px rgba(0, 0, 0, 0.6);
   --shadow-soft: 0 10px 24px rgba(0, 0, 0, 0.5);
   --bottom-bar-height: 84px;
+  --app-header-height: 72px;
   font-size: 16px;
 }
 
@@ -204,7 +205,7 @@ body {
 .character-select,
 .character-sheet {
   width: 100%;
-  min-height: 100%;
+  min-height: calc(100% - var(--app-header-height, 0px));
   display: flex;
   flex-direction: column;
   background: transparent;
@@ -471,6 +472,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: calc(100% - var(--app-header-height, 0px));
   padding: 1.5rem 1.75rem 1.75rem;
   overflow-y: auto;
 }

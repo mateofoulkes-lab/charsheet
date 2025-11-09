@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v9';
 const CACHE_PREFIX = 'proyecto-cooldown-cache-';
 const LEGACY_CACHE_PREFIXES = ['charsheet-cache-'];
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
@@ -9,7 +9,8 @@ const OFFLINE_ASSETS = [
   './script.js',
   './manifest.webmanifest',
   './assets/icon.svg',
-  './assets/icon-maskable.svg'
+  './assets/icon-maskable.svg',
+  './assets/empty.png'
 ];
 
 self.addEventListener('install', (event) => {

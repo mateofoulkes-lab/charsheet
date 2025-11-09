@@ -19,11 +19,9 @@
   />
   <link id="mainStylesheet" rel="stylesheet" href="" />
   <script>
-    window.APP_VERSION = 'v7';
+    window.APP_VERSION = 'v9';
     window.APP_VERSION_LABEL = window.APP_VERSION;
-    window.DEFAULT_PORTRAIT =
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAA' +
-      'AAAAAAAAAAAAAAAAAAD4GlrxAAE9eEIAAAAASUVORK5CYII=';
+    window.DEFAULT_PORTRAIT = 'assets/empty.png';
     const stylesheet = document.getElementById('mainStylesheet');
     if (stylesheet) {
       stylesheet.href = `styles.css?v=${window.APP_VERSION}`;
@@ -763,9 +761,32 @@
 
   <script>
     (function applyDefaultPortraits() {
-      const placeholder = window.DEFAULT_PORTRAIT;
+      const basePlaceholder = window.DEFAULT_PORTRAIT;
+      const version = window.APP_VERSION;
+      const hasPlaceholder = typeof basePlaceholder === 'string' && basePlaceholder.length > 0;
+      if (!hasPlaceholder) {
+        return;
+      }
+      const isDataUri = hasPlaceholder && basePlaceholder.startsWith('data:');
+      const placeholder =
+        hasPlaceholder && !isDataUri && version
+          ? `${basePlaceholder}${basePlaceholder.includes('?') ? '&' : '?'}v=${version}`
+          : basePlaceholder;
+
       document.querySelectorAll('[data-default-portrait]').forEach((img) => {
+        if (img.dataset.portraitFallbackBound !== 'true') {
+          img.dataset.portraitFallbackBound = 'true';
+          img.addEventListener('error', () => {
+            if (img.dataset.usingPortraitFallback === 'true') {
+              return;
+            }
+            img.dataset.usingPortraitFallback = 'true';
+            img.setAttribute('src', placeholder);
+          });
+        }
+
         if (!img.getAttribute('src')) {
+          img.dataset.usingPortraitFallback = 'false';
           img.setAttribute('src', placeholder);
         }
       });
