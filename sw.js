@@ -1,5 +1,7 @@
-const CACHE_VERSION = 'v5';
-const CACHE_NAME = `charsheet-cache-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v7';
+const CACHE_PREFIX = 'proyecto-cooldown-cache-';
+const LEGACY_CACHE_PREFIXES = ['charsheet-cache-'];
+const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const OFFLINE_ASSETS = [
   './',
   './index.html',
@@ -23,13 +25,13 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith('charsheet-cache-') && key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
-        )
-      )
+      .then((keys) => {
+        const prefixes = [CACHE_PREFIX, ...LEGACY_CACHE_PREFIXES];
+        const deletions = keys
+          .filter((key) => prefixes.some((prefix) => key.startsWith(prefix)) && key !== CACHE_NAME)
+          .map((key) => caches.delete(key));
+        return Promise.all(deletions);
+      })
       .then(() => self.clients.claim())
   );
 });

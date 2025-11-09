@@ -1,6 +1,6 @@
 {
-  "name": "CharSheet Companion",
-  "short_name": "CharSheet",
+  "name": "Proyecto CoolDown",
+  "short_name": "CoolDown",
   "description": "Gestiona y consulta tus personajes de rol desde cualquier lugar.",
   "start_url": "./index.html",
   "display": "standalone",
