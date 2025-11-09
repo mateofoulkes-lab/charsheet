@@ -1,5 +1,8 @@
 const STORAGE_KEY = 'charsheet.characters';
 const SELECTED_KEY = 'charsheet.selectedId';
+const DB_NAME = 'charsheet-storage';
+const DB_VERSION = 1;
+const DB_STORE_NAME = 'keyvalue';
 const DEFAULT_PORTRAIT =
   (typeof window !== 'undefined' && window.DEFAULT_PORTRAIT) ||
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAAAAAAAAAAAAAAAAD4GlrxAAE9eEIAAAAASUVORK5CYII=';
@@ -227,6 +230,153 @@ function safeSetItem(key, value) {
     window.localStorage.setItem(key, value);
   } catch (error) {
     console.warn('No se pudo escribir en el almacenamiento local:', error);
+  }
+}
+
+function supportsIndexedDB() {
+  return typeof window !== 'undefined' && 'indexedDB' in window;
+}
+
+let dbPromise = null;
+
+function getDatabase() {
+  if (!supportsIndexedDB()) {
+    return Promise.resolve(null);
+  }
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve) => {
+      try {
+        const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(DB_STORE_NAME)) {
+            db.createObjectStore(DB_STORE_NAME);
+          }
+        };
+        request.onsuccess = () => {
+          const db = request.result;
+          db.addEventListener('versionchange', () => {
+            db.close();
+            dbPromise = null;
+          });
+          resolve(db);
+        };
+        request.onerror = () => {
+          console.warn('No se pudo abrir la base de datos local:', request.error);
+          resolve(null);
+        };
+        request.onblocked = () => {
+          console.warn('El acceso a la base de datos local está bloqueado por otra pestaña.');
+        };
+      } catch (error) {
+        console.warn('No se pudo iniciar la base de datos local:', error);
+        resolve(null);
+      }
+    });
+  }
+  return dbPromise;
+}
+
+async function idbGet(key) {
+  const db = await getDatabase();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const transaction = db.transaction(DB_STORE_NAME, 'readonly');
+      const store = transaction.objectStore(DB_STORE_NAME);
+      const request = store.get(key);
+      request.onsuccess = () => {
+        resolve(request.result ?? null);
+      };
+      request.onerror = () => {
+        console.warn('No se pudo leer de la base de datos local:', request.error);
+        resolve(null);
+      };
+    } catch (error) {
+      console.warn('No se pudo acceder a la base de datos local:', error);
+      resolve(null);
+    }
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await getDatabase();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const transaction = db.transaction(DB_STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(DB_STORE_NAME);
+      const request = value === null ? store.delete(key) : store.put(value, key);
+      request.onsuccess = () => {
+        resolve();
+      };
+      request.onerror = () => {
+        console.warn('No se pudo escribir en la base de datos local:', request.error);
+        resolve();
+      };
+    } catch (error) {
+      console.warn('No se pudo actualizar la base de datos local:', error);
+      resolve();
+    }
+  });
+}
+
+function parseStoredCharacters(raw) {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return null;
+    }
+    return parsed.map(normalizeCharacter);
+  } catch (error) {
+    console.warn('No se pudieron interpretar los personajes guardados:', error);
+    return null;
+  }
+}
+
+function normalizeStoredSelectedId(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const text = value.toString().trim();
+  if (text.length === 0) {
+    return null;
+  }
+  return text;
+}
+
+async function loadCharactersFromIndexedDB() {
+  const stored = await idbGet(STORAGE_KEY);
+  return parseStoredCharacters(stored);
+}
+
+function persistCharactersToIndexedDB(list) {
+  const payload = JSON.stringify(list);
+  idbSet(STORAGE_KEY, payload).catch((error) => {
+    console.warn('No se pudo guardar los personajes en la base de datos local:', error);
+  });
+}
+
+async function loadSelectedIdFromIndexedDB() {
+  const stored = await idbGet(SELECTED_KEY);
+  return normalizeStoredSelectedId(stored);
+}
+
+function persistSelectedIdToIndexedDB(id) {
+  const value = id ? id.toString() : null;
+  idbSet(SELECTED_KEY, value).catch((error) => {
+    console.warn('No se pudo guardar el personaje seleccionado en la base de datos local:', error);
+  });
+}
+
+function requestPersistentStorage() {
+  if (navigator.storage?.persist) {
+    navigator.storage
+      .persist()
+      .catch((error) => console.warn('No se pudo solicitar almacenamiento persistente:', error));
   }
 }
 
@@ -729,34 +879,49 @@ function normalizeCharacter(character) {
   return normalized;
 }
 
-function loadCharacters() {
-  const raw = safeGetItem(STORAGE_KEY);
-  if (!raw) {
-    return defaultCharacters.map(normalizeCharacter);
+async function loadCharacters() {
+  const localStored = parseStoredCharacters(safeGetItem(STORAGE_KEY));
+  if (localStored) {
+    persistCharactersToIndexedDB(localStored);
+    return localStored;
   }
 
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return defaultCharacters.map(normalizeCharacter);
-    }
-    return parsed.map(normalizeCharacter);
-  } catch (error) {
-    console.warn('No se pudieron cargar los personajes guardados:', error);
-    return defaultCharacters.map(normalizeCharacter);
+  const idbStored = await loadCharactersFromIndexedDB();
+  if (idbStored) {
+    safeSetItem(STORAGE_KEY, JSON.stringify(idbStored));
+    return idbStored;
   }
+
+  return defaultCharacters.map(normalizeCharacter);
 }
 
 function saveCharacters(list) {
-  safeSetItem(STORAGE_KEY, JSON.stringify(list));
+  const payload = JSON.stringify(list);
+  safeSetItem(STORAGE_KEY, payload);
+  persistCharactersToIndexedDB(list);
 }
 
-function loadSelectedCharacterId() {
-  return safeGetItem(SELECTED_KEY);
+async function loadSelectedCharacterId() {
+  const localStored = normalizeStoredSelectedId(safeGetItem(SELECTED_KEY));
+  if (localStored) {
+    persistSelectedIdToIndexedDB(localStored);
+    return localStored;
+  }
+
+  const idbStored = await loadSelectedIdFromIndexedDB();
+  if (idbStored) {
+    safeSetItem(SELECTED_KEY, idbStored);
+    return idbStored;
+  }
+
+  safeSetItem(SELECTED_KEY, '');
+  return null;
 }
 
 function saveSelectedCharacterId(id) {
-  safeSetItem(SELECTED_KEY, id ?? '');
+  const value = id ?? '';
+  safeSetItem(SELECTED_KEY, value);
+  persistSelectedIdToIndexedDB(id);
 }
 
 function ensureUniqueId(baseId) {
@@ -3173,10 +3338,10 @@ function setHeroCardCollapsed(collapsed) {
   }
 }
 
-function init() {
+async function init() {
   cacheElements();
-  characters = loadCharacters();
-  selectedCharacterId = loadSelectedCharacterId();
+  characters = await loadCharacters();
+  selectedCharacterId = await loadSelectedCharacterId();
 
   if (selectedCharacterId && !characters.some((item) => item.id === selectedCharacterId)) {
     selectedCharacterId = null;
@@ -3204,12 +3369,17 @@ function init() {
   wireInteractions();
   updateActiveAbilityPreview();
   updateInventoryPreview();
+  requestPersistentStorage();
+}
+
+function startApp() {
+  init().catch((error) => console.error('No se pudo inicializar la aplicación:', error));
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init, { once: true });
+  document.addEventListener('DOMContentLoaded', startApp, { once: true });
 } else {
-  init();
+  startApp();
 }
 
 if ('serviceWorker' in navigator) {
