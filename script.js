@@ -1294,14 +1294,9 @@ function renderCharacterList() {
       metaParts.push(`Nivel ${character.level}`);
     }
     const metaLine = metaParts.join(' • ');
-    const affiliationParts = [];
-    if (character.group) {
-      affiliationParts.push(`Grupo: ${character.group}`);
-    }
-    if (character.campaign) {
-      affiliationParts.push(`Campaña: ${character.campaign}`);
-    }
-    const affiliationLine = affiliationParts.join(' • ');
+    const affiliationLine = character.campaign
+      ? `Campaña: ${character.campaign}`
+      : '';
 
     card.innerHTML = `
       <img alt="Retrato de ${character.name}" loading="lazy" />
