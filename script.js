@@ -4,8 +4,9 @@ const DB_NAME = 'charsheet-storage';
 const DB_VERSION = 1;
 const DB_STORE_NAME = 'keyvalue';
 const DEFAULT_PORTRAIT =
-  (typeof window !== 'undefined' && window.DEFAULT_PORTRAIT) ||
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAAAAAAAAAAAAAAAAD4GlrxAAE9eEIAAAAASUVORK5CYII=';
+const PLACEHOLDER_PORTRAIT =
+  (typeof window !== 'undefined' && window.DEFAULT_PORTRAIT) || DEFAULT_PORTRAIT;
 
 const STAT_KEYS = ['vida', 'ataque', 'defensa', 'danio', 'movimiento', 'alcance'];
 const STAT_LABELS = {
@@ -51,7 +52,7 @@ const defaultCharacters = [
 const elements = {};
 const editorState = {
   editingId: null,
-  portrait: DEFAULT_PORTRAIT
+  portrait: PLACEHOLDER_PORTRAIT
 };
 const abilityEditorState = {
   type: null,
@@ -105,8 +106,36 @@ function withVersion(path) {
   return `${path}${separator}v=${window.APP_VERSION}`;
 }
 
+function normalizePortraitValue(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+    return '';
+  }
+  if (trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  return trimmed.replace(/([?&])v=[^&]+$/, '');
+}
+
+function normalizeImageValue(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+    return '';
+  }
+  if (trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  return trimmed.replace(/([?&])v=[^&]+$/, '');
+}
+
 function getVersionedPortraitSrc(value) {
-  const candidate = typeof value === 'string' && value.trim() ? value.trim() : DEFAULT_PORTRAIT;
+  const candidate = typeof value === 'string' && value.trim() ? value.trim() : PLACEHOLDER_PORTRAIT;
   return withVersion(candidate);
 }
 
@@ -135,7 +164,7 @@ function setPortraitImage(img, src, { alt } = {}) {
     img.alt = alt;
   }
   img.dataset.usingPortraitFallback = 'false';
-  img.setAttribute('src', getVersionedPortraitSrc(src));
+  img.setAttribute('src', getVersionedPortraitSrc(normalizePortraitValue(src)));
 }
 
 function isDataUrl(value) {
@@ -183,7 +212,8 @@ async function prepareCharacterForExport(character) {
   }
 
   const exportable = JSON.parse(JSON.stringify(character));
-  exportable.portrait = await ensureDataUrl(character.portrait || DEFAULT_PORTRAIT);
+  const exportPortrait = normalizePortraitValue(character.portrait) || PLACEHOLDER_PORTRAIT;
+  exportable.portrait = await ensureDataUrl(exportPortrait);
 
   const activeAbilities = Array.isArray(character.activeAbilities)
     ? character.activeAbilities.filter(Boolean)
@@ -191,7 +221,7 @@ async function prepareCharacterForExport(character) {
   exportable.activeAbilities = await Promise.all(
     activeAbilities.map(async (ability) => {
       const copy = JSON.parse(JSON.stringify(ability));
-      copy.image = await ensureDataUrl(ability?.image || '');
+      copy.image = await ensureDataUrl(normalizeImageValue(ability?.image));
       return copy;
     })
   );
@@ -205,7 +235,7 @@ async function prepareCharacterForExport(character) {
   exportable.inventory = await Promise.all(
     inventoryItems.map(async (item) => {
       const copy = JSON.parse(JSON.stringify(item));
-      copy.image = await ensureDataUrl(item?.image || '');
+      copy.image = await ensureDataUrl(normalizeImageValue(item?.image));
       return copy;
     })
   );
@@ -263,8 +293,20 @@ function safeGetItem(key) {
 function safeSetItem(key, value) {
   try {
     window.localStorage.setItem(key, value);
+    return true;
   } catch (error) {
     console.warn('No se pudo escribir en el almacenamiento local:', error);
+    return false;
+  }
+}
+
+function safeRemoveItem(key) {
+  try {
+    window.localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    console.warn('No se pudo eliminar la clave del almacenamiento local:', error);
+    return false;
   }
 }
 
@@ -542,7 +584,7 @@ function normalizeActiveAbility(ability) {
     description: ability.description?.toString().trim() || '',
     features: normalizeFeatureList(ability.features),
     cooldown: Number.isFinite(cooldown) && !Number.isNaN(cooldown) && cooldown > 0 ? cooldown : 0,
-    image: ability.image?.toString().trim() || '',
+    image: normalizeImageValue(ability.image),
     cooldownProgress: 0,
     isBasic,
     effectDuration
@@ -656,7 +698,7 @@ function normalizeInventoryItem(item) {
   if (!item) return null;
   const title = item.title?.toString().trim() || 'Elemento sin título';
   const description = item.description?.toString().trim() || '';
-  const image = item.image?.toString().trim() || '';
+  const image = normalizeImageValue(item.image);
   const id = item.id?.toString().trim() || slugify(title || 'item');
   return {
     id,
@@ -864,12 +906,9 @@ function normalizeCharacter(character) {
     normalizedStats[key] = normalizeStatValue(migratedCharacter?.stats?.[key]);
   });
 
-  let portrait = migratedCharacter?.portrait || DEFAULT_PORTRAIT;
-  if (typeof portrait === 'string') {
-    const trimmed = portrait.trim();
-    portrait = trimmed && trimmed !== 'null' && trimmed !== 'undefined' ? trimmed : DEFAULT_PORTRAIT;
-  } else {
-    portrait = DEFAULT_PORTRAIT;
+  let portrait = normalizePortraitValue(migratedCharacter?.portrait);
+  if (!portrait) {
+    portrait = PLACEHOLDER_PORTRAIT;
   }
 
   const activeAbilities = ensureBasicActiveAbility(
@@ -915,24 +954,43 @@ function normalizeCharacter(character) {
 }
 
 async function loadCharacters() {
+  const idbStored = await loadCharactersFromIndexedDB();
+  if (idbStored) {
+    const serialized = JSON.stringify(idbStored);
+    if (!safeSetItem(STORAGE_KEY, serialized)) {
+      safeRemoveItem(STORAGE_KEY);
+    }
+    return idbStored;
+  }
+
   const localStored = parseStoredCharacters(safeGetItem(STORAGE_KEY));
   if (localStored) {
     persistCharactersToIndexedDB(localStored);
     return localStored;
   }
 
-  const idbStored = await loadCharactersFromIndexedDB();
-  if (idbStored) {
-    safeSetItem(STORAGE_KEY, JSON.stringify(idbStored));
-    return idbStored;
-  }
-
   // Sembrar personajes por defecto SOLO la primera vez
-  const seeded = safeGetItem('charsheet.seeded');
+  let seeded = safeGetItem('charsheet.seeded');
+  if (!seeded) {
+    try {
+      seeded = await idbGet('charsheet.seeded');
+    } catch (error) {
+      console.warn('No se pudo verificar el estado de sembrado en la base de datos local:', error);
+    }
+  }
   if (!seeded) {
     const seededList = defaultCharacters.map(normalizeCharacter);
-    safeSetItem(STORAGE_KEY, JSON.stringify(seededList));
-    safeSetItem('charsheet.seeded', '1');
+    const serialized = JSON.stringify(seededList);
+    if (!safeSetItem(STORAGE_KEY, serialized)) {
+      safeRemoveItem(STORAGE_KEY);
+    }
+    if (!safeSetItem('charsheet.seeded', '1')) {
+      safeRemoveItem('charsheet.seeded');
+    }
+    persistCharactersToIndexedDB(seededList);
+    idbSet('charsheet.seeded', '1').catch((error) => {
+      console.warn('No se pudo marcar el sembrado en la base de datos local:', error);
+    });
     return seededList;
   }
 
@@ -942,30 +1000,39 @@ async function loadCharacters() {
 
 function saveCharacters(list) {
   const payload = JSON.stringify(list);
-  safeSetItem(STORAGE_KEY, payload);
+  if (!safeSetItem(STORAGE_KEY, payload)) {
+    safeRemoveItem(STORAGE_KEY);
+  }
   persistCharactersToIndexedDB(list);
 }
 
 async function loadSelectedCharacterId() {
+  const idbStored = await loadSelectedIdFromIndexedDB();
+  if (idbStored) {
+    if (!safeSetItem(SELECTED_KEY, idbStored)) {
+      safeRemoveItem(SELECTED_KEY);
+    }
+    return idbStored;
+  }
+
   const localStored = normalizeStoredSelectedId(safeGetItem(SELECTED_KEY));
   if (localStored) {
     persistSelectedIdToIndexedDB(localStored);
     return localStored;
   }
 
-  const idbStored = await loadSelectedIdFromIndexedDB();
-  if (idbStored) {
-    safeSetItem(SELECTED_KEY, idbStored);
-    return idbStored;
+  if (!safeSetItem(SELECTED_KEY, '')) {
+    safeRemoveItem(SELECTED_KEY);
   }
-
-  safeSetItem(SELECTED_KEY, '');
+  persistSelectedIdToIndexedDB(null);
   return null;
 }
 
 function saveSelectedCharacterId(id) {
   const value = id ?? '';
-  safeSetItem(SELECTED_KEY, value);
+  if (!safeSetItem(SELECTED_KEY, value)) {
+    safeRemoveItem(SELECTED_KEY);
+  }
   persistSelectedIdToIndexedDB(id);
 }
 
@@ -2482,7 +2549,7 @@ function openActiveAbilityModal(ability = null) {
   if (!elements.activeAbilityModal) return;
   abilityEditorState.type = 'active';
   abilityEditorState.editingId = ability?.id ?? null;
-  abilityEditorState.image = ability?.image || '';
+  abilityEditorState.image = normalizeImageValue(ability?.image);
   abilityEditorState.modifiers = [];
   elements.activeAbilityForm?.reset();
   if (elements.activeAbilityTitle) {
@@ -2523,7 +2590,7 @@ function handleActiveAbilityImageChange(event) {
   }
   const reader = new FileReader();
   reader.onload = (loadEvent) => {
-    abilityEditorState.image = loadEvent.target?.result || '';
+    abilityEditorState.image = normalizeImageValue(loadEvent.target?.result || '');
     updateActiveAbilityPreview();
   };
   reader.readAsDataURL(file);
@@ -2564,7 +2631,7 @@ function handleActiveAbilitySubmit(event) {
       features,
       cooldown,
       effectDuration,
-      image: abilityEditorState.image || '',
+      image: normalizeImageValue(abilityEditorState.image),
       isBasic: previous?.isBasic === true || abilityId === 'ataque-basico',
       cooldownProgress: 0
     };
@@ -2816,7 +2883,7 @@ function closeInventoryModal() {
 function openInventoryModal(item = null) {
   if (!elements.inventoryModal) return;
   inventoryEditorState.editingId = item?.id ?? null;
-  inventoryEditorState.image = item?.image || '';
+  inventoryEditorState.image = normalizeImageValue(item?.image);
   elements.inventoryForm?.reset();
   if (elements.inventoryTitle) {
     elements.inventoryTitle.value = item?.title ?? '';
@@ -2843,7 +2910,7 @@ function handleInventoryImageChange(event) {
   }
   const reader = new FileReader();
   reader.onload = (loadEvent) => {
-    inventoryEditorState.image = loadEvent.target?.result || '';
+    inventoryEditorState.image = normalizeImageValue(loadEvent.target?.result || '');
     updateInventoryPreview();
   };
   reader.readAsDataURL(file);
@@ -2874,7 +2941,7 @@ function handleInventorySubmit(event) {
       id: inventoryEditorState.editingId || ensureUniqueInventoryId(draft.inventory, `${baseId}-item`),
       title,
       description,
-      image: inventoryEditorState.image || ''
+      image: normalizeImageValue(inventoryEditorState.image)
     };
     const list = draft.inventory;
     const index = list.findIndex((entry) => entry.id === item.id);
@@ -3119,7 +3186,7 @@ function createBlankCharacter() {
     level: 1,
     group: '',
     campaign: '',
-    portrait: DEFAULT_PORTRAIT,
+    portrait: PLACEHOLDER_PORTRAIT,
     stats,
     activeAbilities: [],
     passiveAbilities: [],
@@ -3132,7 +3199,7 @@ function createBlankCharacter() {
 function openCharacterEditor(character) {
   const data = character ? normalizeCharacter(character) : createBlankCharacter();
   editorState.editingId = character ? data.id : null;
-  editorState.portrait = data.portrait || DEFAULT_PORTRAIT;
+  editorState.portrait = data.portrait || PLACEHOLDER_PORTRAIT;
 
   fillEditorForm(data);
   updatePortraitPreview();
@@ -3148,7 +3215,7 @@ function openCharacterEditor(character) {
 function closeCharacterEditor() {
   elements.editorModal?.classList.add('hidden');
   editorState.editingId = null;
-  editorState.portrait = DEFAULT_PORTRAIT;
+  editorState.portrait = PLACEHOLDER_PORTRAIT;
   elements.characterForm?.reset();
   if (elements.editorTitle) {
     elements.editorTitle.textContent = 'Editor de personaje';
@@ -3188,7 +3255,7 @@ function fillEditorForm(character) {
 
 function updatePortraitPreview() {
   if (!elements.portraitPreview) return;
-  const src = editorState.portrait || DEFAULT_PORTRAIT;
+  const src = editorState.portrait || PLACEHOLDER_PORTRAIT;
   setPortraitImage(elements.portraitPreview, src);
 }
 
@@ -3204,7 +3271,7 @@ function handlePortraitChange(event) {
 
   const reader = new FileReader();
   reader.onload = (loadEvent) => {
-    editorState.portrait = loadEvent.target?.result || DEFAULT_PORTRAIT;
+    editorState.portrait = loadEvent.target?.result || PLACEHOLDER_PORTRAIT;
     updatePortraitPreview();
   };
   reader.readAsDataURL(file);
@@ -3224,7 +3291,7 @@ function collectFormData(formData) {
     level: Number.parseInt(formData.get('characterLevel'), 10) || 1,
     group: formData.get('characterGroup')?.toString().trim() || '',
     campaign: formData.get('characterCampaign')?.toString().trim() || '',
-    portrait: editorState.portrait || DEFAULT_PORTRAIT,
+    portrait: editorState.portrait || PLACEHOLDER_PORTRAIT,
     stats: {}
   };
 
@@ -3396,7 +3463,7 @@ function wireInteractions() {
   elements.characterForm?.addEventListener('submit', handleFormSubmit);
   elements.portraitInput?.addEventListener('change', handlePortraitChange);
   elements.clearPortrait?.addEventListener('click', () => {
-    editorState.portrait = DEFAULT_PORTRAIT;
+    editorState.portrait = PLACEHOLDER_PORTRAIT;
     if (elements.portraitInput) {
       elements.portraitInput.value = '';
     }
