@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v12';
+const CACHE_VERSION = 'v13';
 const CACHE_PREFIX = 'proyecto-cooldown-cache-';
 const LEGACY_CACHE_PREFIXES = ['charsheet-cache-'];
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
