@@ -4,8 +4,9 @@ const DB_NAME = 'charsheet-storage';
 const DB_VERSION = 1;
 const DB_STORE_NAME = 'keyvalue';
 const DEFAULT_PORTRAIT =
-  (typeof window !== 'undefined' && window.DEFAULT_PORTRAIT) ||
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAAAAAAAAAAAAAAAAD4GlrxAAE9eEIAAAAASUVORK5CYII=';
+const PLACEHOLDER_PORTRAIT =
+  (typeof window !== 'undefined' && window.DEFAULT_PORTRAIT) || DEFAULT_PORTRAIT;
 
 const STAT_KEYS = ['vida', 'ataque', 'defensa', 'danio', 'movimiento', 'alcance'];
 const STAT_LABELS = {
@@ -51,7 +52,7 @@ const defaultCharacters = [
 const elements = {};
 const editorState = {
   editingId: null,
-  portrait: DEFAULT_PORTRAIT
+  portrait: PLACEHOLDER_PORTRAIT
 };
 const abilityEditorState = {
   type: null,
@@ -73,6 +74,8 @@ const sheetAbilityState = {
 let characters = [];
 let selectedCharacterId = null;
 let passiveModifierCache = createEmptyModifierData();
+let previousNonSettingsScreen = 'select';
+let appHeaderHeight = null;
 
 function getSelectedCharacter() {
   if (!selectedCharacterId) return null;
@@ -101,6 +104,67 @@ function withVersion(path) {
   }
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}v=${window.APP_VERSION}`;
+}
+
+function normalizePortraitValue(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+    return '';
+  }
+  if (trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  return trimmed.replace(/([?&])v=[^&]+$/, '');
+}
+
+function normalizeImageValue(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+    return '';
+  }
+  if (trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  return trimmed.replace(/([?&])v=[^&]+$/, '');
+}
+
+function getVersionedPortraitSrc(value) {
+  const candidate = typeof value === 'string' && value.trim() ? value.trim() : PLACEHOLDER_PORTRAIT;
+  return withVersion(candidate);
+}
+
+function ensurePortraitFallback(img) {
+  if (!img) return;
+  if (!img.dataset.usingPortraitFallback) {
+    img.dataset.usingPortraitFallback = 'false';
+  }
+  if (img.dataset.portraitFallbackBound === 'true') {
+    return;
+  }
+  img.dataset.portraitFallbackBound = 'true';
+  img.addEventListener('error', () => {
+    if (img.dataset.usingPortraitFallback === 'true') {
+      return;
+    }
+    img.dataset.usingPortraitFallback = 'true';
+    img.setAttribute('src', getVersionedPortraitSrc());
+  });
+}
+
+function setPortraitImage(img, src, { alt } = {}) {
+  if (!img) return;
+  ensurePortraitFallback(img);
+  if (alt) {
+    img.alt = alt;
+  }
+  img.dataset.usingPortraitFallback = 'false';
+  img.setAttribute('src', getVersionedPortraitSrc(normalizePortraitValue(src)));
 }
 
 function isDataUrl(value) {
@@ -148,7 +212,8 @@ async function prepareCharacterForExport(character) {
   }
 
   const exportable = JSON.parse(JSON.stringify(character));
-  exportable.portrait = await ensureDataUrl(character.portrait || DEFAULT_PORTRAIT);
+  const exportPortrait = normalizePortraitValue(character.portrait) || PLACEHOLDER_PORTRAIT;
+  exportable.portrait = await ensureDataUrl(exportPortrait);
 
   const activeAbilities = Array.isArray(character.activeAbilities)
     ? character.activeAbilities.filter(Boolean)
@@ -156,7 +221,7 @@ async function prepareCharacterForExport(character) {
   exportable.activeAbilities = await Promise.all(
     activeAbilities.map(async (ability) => {
       const copy = JSON.parse(JSON.stringify(ability));
-      copy.image = await ensureDataUrl(ability?.image || '');
+      copy.image = await ensureDataUrl(normalizeImageValue(ability?.image));
       return copy;
     })
   );
@@ -170,7 +235,7 @@ async function prepareCharacterForExport(character) {
   exportable.inventory = await Promise.all(
     inventoryItems.map(async (item) => {
       const copy = JSON.parse(JSON.stringify(item));
-      copy.image = await ensureDataUrl(item?.image || '');
+      copy.image = await ensureDataUrl(normalizeImageValue(item?.image));
       return copy;
     })
   );
@@ -228,8 +293,20 @@ function safeGetItem(key) {
 function safeSetItem(key, value) {
   try {
     window.localStorage.setItem(key, value);
+    return true;
   } catch (error) {
     console.warn('No se pudo escribir en el almacenamiento local:', error);
+    return false;
+  }
+}
+
+function safeRemoveItem(key) {
+  try {
+    window.localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    console.warn('No se pudo eliminar la clave del almacenamiento local:', error);
+    return false;
   }
 }
 
@@ -507,7 +584,7 @@ function normalizeActiveAbility(ability) {
     description: ability.description?.toString().trim() || '',
     features: normalizeFeatureList(ability.features),
     cooldown: Number.isFinite(cooldown) && !Number.isNaN(cooldown) && cooldown > 0 ? cooldown : 0,
-    image: ability.image?.toString().trim() || '',
+    image: normalizeImageValue(ability.image),
     cooldownProgress: 0,
     isBasic,
     effectDuration
@@ -621,7 +698,7 @@ function normalizeInventoryItem(item) {
   if (!item) return null;
   const title = item.title?.toString().trim() || 'Elemento sin título';
   const description = item.description?.toString().trim() || '';
-  const image = item.image?.toString().trim() || '';
+  const image = normalizeImageValue(item.image);
   const id = item.id?.toString().trim() || slugify(title || 'item');
   return {
     id,
@@ -829,12 +906,9 @@ function normalizeCharacter(character) {
     normalizedStats[key] = normalizeStatValue(migratedCharacter?.stats?.[key]);
   });
 
-  let portrait = migratedCharacter?.portrait || DEFAULT_PORTRAIT;
-  if (typeof portrait === 'string') {
-    const trimmed = portrait.trim();
-    portrait = trimmed && trimmed !== 'null' && trimmed !== 'undefined' ? trimmed : DEFAULT_PORTRAIT;
-  } else {
-    portrait = DEFAULT_PORTRAIT;
+  let portrait = normalizePortraitValue(migratedCharacter?.portrait);
+  if (!portrait) {
+    portrait = PLACEHOLDER_PORTRAIT;
   }
 
   const activeAbilities = ensureBasicActiveAbility(
@@ -880,47 +954,85 @@ function normalizeCharacter(character) {
 }
 
 async function loadCharacters() {
+  const idbStored = await loadCharactersFromIndexedDB();
+  if (idbStored) {
+    const serialized = JSON.stringify(idbStored);
+    if (!safeSetItem(STORAGE_KEY, serialized)) {
+      safeRemoveItem(STORAGE_KEY);
+    }
+    return idbStored;
+  }
+
   const localStored = parseStoredCharacters(safeGetItem(STORAGE_KEY));
   if (localStored) {
     persistCharactersToIndexedDB(localStored);
     return localStored;
   }
 
-  const idbStored = await loadCharactersFromIndexedDB();
-  if (idbStored) {
-    safeSetItem(STORAGE_KEY, JSON.stringify(idbStored));
-    return idbStored;
+  // Sembrar personajes por defecto SOLO la primera vez
+  let seeded = safeGetItem('charsheet.seeded');
+  if (!seeded) {
+    try {
+      seeded = await idbGet('charsheet.seeded');
+    } catch (error) {
+      console.warn('No se pudo verificar el estado de sembrado en la base de datos local:', error);
+    }
+  }
+  if (!seeded) {
+    const seededList = defaultCharacters.map(normalizeCharacter);
+    const serialized = JSON.stringify(seededList);
+    if (!safeSetItem(STORAGE_KEY, serialized)) {
+      safeRemoveItem(STORAGE_KEY);
+    }
+    if (!safeSetItem('charsheet.seeded', '1')) {
+      safeRemoveItem('charsheet.seeded');
+    }
+    persistCharactersToIndexedDB(seededList);
+    idbSet('charsheet.seeded', '1').catch((error) => {
+      console.warn('No se pudo marcar el sembrado en la base de datos local:', error);
+    });
+    return seededList;
   }
 
-  return defaultCharacters.map(normalizeCharacter);
+  // Si no hay datos guardados y ya sembramos antes, devolver lista vacía
+  return [];
 }
 
 function saveCharacters(list) {
   const payload = JSON.stringify(list);
-  safeSetItem(STORAGE_KEY, payload);
+  if (!safeSetItem(STORAGE_KEY, payload)) {
+    safeRemoveItem(STORAGE_KEY);
+  }
   persistCharactersToIndexedDB(list);
 }
 
 async function loadSelectedCharacterId() {
+  const idbStored = await loadSelectedIdFromIndexedDB();
+  if (idbStored) {
+    if (!safeSetItem(SELECTED_KEY, idbStored)) {
+      safeRemoveItem(SELECTED_KEY);
+    }
+    return idbStored;
+  }
+
   const localStored = normalizeStoredSelectedId(safeGetItem(SELECTED_KEY));
   if (localStored) {
     persistSelectedIdToIndexedDB(localStored);
     return localStored;
   }
 
-  const idbStored = await loadSelectedIdFromIndexedDB();
-  if (idbStored) {
-    safeSetItem(SELECTED_KEY, idbStored);
-    return idbStored;
+  if (!safeSetItem(SELECTED_KEY, '')) {
+    safeRemoveItem(SELECTED_KEY);
   }
-
-  safeSetItem(SELECTED_KEY, '');
+  persistSelectedIdToIndexedDB(null);
   return null;
 }
 
 function saveSelectedCharacterId(id) {
   const value = id ?? '';
-  safeSetItem(SELECTED_KEY, value);
+  if (!safeSetItem(SELECTED_KEY, value)) {
+    safeRemoveItem(SELECTED_KEY);
+  }
   persistSelectedIdToIndexedDB(id);
 }
 
@@ -959,6 +1071,8 @@ function ensureUniqueInventoryId(list, baseId) {
 
 function cacheElements() {
   elements.characterList = document.getElementById('characterList');
+  elements.appHeader = document.querySelector('.app-header');
+  ensureAppHeaderHeight();
   elements.createCharacterBtn = document.getElementById('createCharacterBtn');
   elements.importCharacterBtn = document.getElementById('importCharacterBtn');
   elements.importCharacterInput = document.getElementById('importCharacterInput');
@@ -967,13 +1081,16 @@ function cacheElements() {
   elements.navInventory = document.querySelector('.bottom-bar [data-action="inventory"]');
   elements.navAbilities = document.querySelector('.bottom-bar [data-action="abilities"]');
   elements.navNotes = document.querySelector('.bottom-bar [data-action="notes"]');
+  elements.navSettings = document.querySelector('.bottom-bar [data-action="settings"]');
   elements.navButtons = document.querySelectorAll('.bottom-bar .nav-button');
   elements.screenSelect = document.querySelector('[data-screen="select"]');
   elements.screenSheet = document.querySelector('[data-screen="sheet"]');
   elements.screenInventory = document.querySelector('[data-screen="inventory"]');
   elements.screenAbilities = document.querySelector('[data-screen="abilities"]');
   elements.screenNotes = document.querySelector('[data-screen="notes"]');
+  elements.screenSettings = document.querySelector('[data-screen="settings"]');
   elements.screens = document.querySelectorAll('[data-screen]');
+  elements.settingsBackButton = document.getElementById('settingsBackButton');
   elements.heroCard = document.querySelector('.hero-card');
   elements.heroName = document.getElementById('heroName');
   elements.heroDetails = document.getElementById('heroDetails');
@@ -1066,6 +1183,57 @@ function cacheElements() {
   elements.saveStatDetail = document.getElementById('saveStatDetail');
   elements.cancelStatDetail = document.getElementById('cancelStatDetail');
   elements.closeStatDetail = document.getElementById('closeStatDetail');
+
+  ensurePortraitFallback(elements.heroPortrait);
+  ensurePortraitFallback(elements.portraitPreview);
+}
+
+function ensureAppHeaderHeight() {
+  if (typeof document === 'undefined') return;
+  if (!elements.appHeader || !(elements.appHeader instanceof HTMLElement)) {
+    elements.appHeader = document.querySelector('.app-header');
+  }
+  const header = elements.appHeader;
+  if (!header) return;
+
+  const wasHidden = header.classList.contains('hidden');
+  const previousStyles = {
+    position: header.style.position,
+    visibility: header.style.visibility,
+    pointerEvents: header.style.pointerEvents,
+    width: header.style.width,
+    top: header.style.top,
+    left: header.style.left
+  };
+
+  if (wasHidden) {
+    header.style.visibility = 'hidden';
+    header.style.pointerEvents = 'none';
+    header.style.position = 'absolute';
+    header.style.width = '100%';
+    header.style.top = '0';
+    header.style.left = '0';
+    header.classList.remove('hidden');
+  }
+
+  const { height } = header.getBoundingClientRect();
+
+  if (wasHidden) {
+    header.classList.add('hidden');
+  }
+
+  header.style.position = previousStyles.position;
+  header.style.visibility = previousStyles.visibility;
+  header.style.pointerEvents = previousStyles.pointerEvents;
+  header.style.width = previousStyles.width;
+  header.style.top = previousStyles.top;
+  header.style.left = previousStyles.left;
+
+  const roundedHeight = Math.round(height);
+  if (roundedHeight > 0 && roundedHeight !== appHeaderHeight) {
+    appHeaderHeight = roundedHeight;
+    document.documentElement.style.setProperty('--app-header-height', `${roundedHeight}px`);
+  }
 }
 
 function updateNavState(activeAction) {
@@ -1074,6 +1242,16 @@ function updateNavState(activeAction) {
     const action = button.dataset.action;
     button.classList.toggle('active', action === activeAction);
   });
+}
+
+function updateAppHeaderVisibility(screenName) {
+  ensureAppHeaderHeight();
+  if (!elements.appHeader || !(elements.appHeader instanceof HTMLElement)) {
+    elements.appHeader = document.querySelector('.app-header');
+  }
+  if (!elements.appHeader) return;
+  const shouldShow = screenName === 'settings';
+  elements.appHeader.classList.toggle('hidden', !shouldShow);
 }
 
 function showScreen(screenName) {
@@ -1085,6 +1263,10 @@ function showScreen(screenName) {
     const isTarget = screen.dataset.screen === screenName;
     screen.classList.toggle('hidden', !isTarget);
   });
+  updateAppHeaderVisibility(screenName);
+  if (screenName && screenName !== 'settings') {
+    previousNonSettingsScreen = screenName;
+  }
 }
 
 function getActiveScreen() {
@@ -1105,7 +1287,6 @@ function renderCharacterList() {
     card.className = `character-card${character.id === selectedCharacterId ? ' active' : ''}`;
     card.dataset.id = character.id;
 
-    const portraitSrc = withVersion(character.portrait || DEFAULT_PORTRAIT);
     const metaParts = [character.ancestry, character.clazz]
       .map((part) => part?.trim())
       .filter(Boolean);
@@ -1123,7 +1304,7 @@ function renderCharacterList() {
     const affiliationLine = affiliationParts.join(' • ');
 
     card.innerHTML = `
-      <img src="${portraitSrc}" alt="Retrato de ${character.name}" loading="lazy" />
+      <img alt="Retrato de ${character.name}" loading="lazy" />
       <div class="character-meta">
         <h2>${character.name}</h2>
         <p class="character-meta-line">${metaLine || '&nbsp;'}</p>
@@ -1144,6 +1325,9 @@ function renderCharacterList() {
         </button>
       </div>
     `;
+
+    const portraitImg = card.querySelector('img');
+    setPortraitImage(portraitImg, character.portrait, { alt: `Retrato de ${character.name}` });
 
     card.addEventListener('click', () => {
       selectCharacter(character.id);
@@ -2236,6 +2420,11 @@ function handleStatKeydown(event) {
   handleStatInteraction(event.currentTarget);
 }
 
+function showSelectScreen() {
+  showScreen('select');
+  updateNavState(null);
+}
+
 function showAbilitiesScreen() {
   renderAbilityLists();
   showScreen('abilities');
@@ -2252,6 +2441,50 @@ function showNotesScreen() {
   renderNotesContent();
   showScreen('notes');
   updateNavState('notes');
+}
+
+function showSettingsScreen() {
+  const active = getActiveScreen();
+  if (active && active !== 'settings') {
+    previousNonSettingsScreen = active;
+  }
+  showScreen('settings');
+  updateNavState('settings');
+}
+
+function restorePreviousScreenFromSettings() {
+  const target = previousNonSettingsScreen && previousNonSettingsScreen !== 'settings'
+    ? previousNonSettingsScreen
+    : 'select';
+
+  if (target === 'sheet') {
+    if (selectedCharacterId) {
+      const character = characters.find((item) => item.id === selectedCharacterId);
+      if (character) {
+        showCharacterSheet(selectedCharacterId);
+        return;
+      }
+    }
+    showSelectScreen();
+    return;
+  }
+
+  if (target === 'abilities') {
+    showAbilitiesScreen();
+    return;
+  }
+
+  if (target === 'inventory') {
+    showInventoryScreen();
+    return;
+  }
+
+  if (target === 'notes') {
+    showNotesScreen();
+    return;
+  }
+
+  showSelectScreen();
 }
 
 function applyCharacterUpdate(characterId, updater) {
@@ -2316,7 +2549,7 @@ function openActiveAbilityModal(ability = null) {
   if (!elements.activeAbilityModal) return;
   abilityEditorState.type = 'active';
   abilityEditorState.editingId = ability?.id ?? null;
-  abilityEditorState.image = ability?.image || '';
+  abilityEditorState.image = normalizeImageValue(ability?.image);
   abilityEditorState.modifiers = [];
   elements.activeAbilityForm?.reset();
   if (elements.activeAbilityTitle) {
@@ -2357,7 +2590,7 @@ function handleActiveAbilityImageChange(event) {
   }
   const reader = new FileReader();
   reader.onload = (loadEvent) => {
-    abilityEditorState.image = loadEvent.target?.result || '';
+    abilityEditorState.image = normalizeImageValue(loadEvent.target?.result || '');
     updateActiveAbilityPreview();
   };
   reader.readAsDataURL(file);
@@ -2398,7 +2631,7 @@ function handleActiveAbilitySubmit(event) {
       features,
       cooldown,
       effectDuration,
-      image: abilityEditorState.image || '',
+      image: normalizeImageValue(abilityEditorState.image),
       isBasic: previous?.isBasic === true || abilityId === 'ataque-basico',
       cooldownProgress: 0
     };
@@ -2650,7 +2883,7 @@ function closeInventoryModal() {
 function openInventoryModal(item = null) {
   if (!elements.inventoryModal) return;
   inventoryEditorState.editingId = item?.id ?? null;
-  inventoryEditorState.image = item?.image || '';
+  inventoryEditorState.image = normalizeImageValue(item?.image);
   elements.inventoryForm?.reset();
   if (elements.inventoryTitle) {
     elements.inventoryTitle.value = item?.title ?? '';
@@ -2677,7 +2910,7 @@ function handleInventoryImageChange(event) {
   }
   const reader = new FileReader();
   reader.onload = (loadEvent) => {
-    inventoryEditorState.image = loadEvent.target?.result || '';
+    inventoryEditorState.image = normalizeImageValue(loadEvent.target?.result || '');
     updateInventoryPreview();
   };
   reader.readAsDataURL(file);
@@ -2708,7 +2941,7 @@ function handleInventorySubmit(event) {
       id: inventoryEditorState.editingId || ensureUniqueInventoryId(draft.inventory, `${baseId}-item`),
       title,
       description,
-      image: inventoryEditorState.image || ''
+      image: normalizeImageValue(inventoryEditorState.image)
     };
     const list = draft.inventory;
     const index = list.findIndex((entry) => entry.id === item.id);
@@ -2880,8 +3113,7 @@ function deleteCharacter(character) {
       showCharacterSheet(selectedCharacterId);
     }
   } else {
-    showScreen('select');
-    updateNavState(null);
+    showSelectScreen();
     updateInventoryControlsAvailability();
   }
 }
@@ -2901,8 +3133,7 @@ function renderCharacterSheetView(character) {
   }
 
   if (elements.heroPortrait) {
-    elements.heroPortrait.src = withVersion(character.portrait || DEFAULT_PORTRAIT);
-    elements.heroPortrait.alt = `Retrato de ${character.name}`;
+    setPortraitImage(elements.heroPortrait, character.portrait, { alt: `Retrato de ${character.name}` });
   }
 
   if (elements.stats) {
@@ -2955,7 +3186,7 @@ function createBlankCharacter() {
     level: 1,
     group: '',
     campaign: '',
-    portrait: DEFAULT_PORTRAIT,
+    portrait: PLACEHOLDER_PORTRAIT,
     stats,
     activeAbilities: [],
     passiveAbilities: [],
@@ -2968,7 +3199,7 @@ function createBlankCharacter() {
 function openCharacterEditor(character) {
   const data = character ? normalizeCharacter(character) : createBlankCharacter();
   editorState.editingId = character ? data.id : null;
-  editorState.portrait = data.portrait || DEFAULT_PORTRAIT;
+  editorState.portrait = data.portrait || PLACEHOLDER_PORTRAIT;
 
   fillEditorForm(data);
   updatePortraitPreview();
@@ -2984,7 +3215,7 @@ function openCharacterEditor(character) {
 function closeCharacterEditor() {
   elements.editorModal?.classList.add('hidden');
   editorState.editingId = null;
-  editorState.portrait = DEFAULT_PORTRAIT;
+  editorState.portrait = PLACEHOLDER_PORTRAIT;
   elements.characterForm?.reset();
   if (elements.editorTitle) {
     elements.editorTitle.textContent = 'Editor de personaje';
@@ -3024,8 +3255,8 @@ function fillEditorForm(character) {
 
 function updatePortraitPreview() {
   if (!elements.portraitPreview) return;
-  const src = editorState.portrait || DEFAULT_PORTRAIT;
-  elements.portraitPreview.src = withVersion(src);
+  const src = editorState.portrait || PLACEHOLDER_PORTRAIT;
+  setPortraitImage(elements.portraitPreview, src);
 }
 
 function handlePortraitChange(event) {
@@ -3040,7 +3271,7 @@ function handlePortraitChange(event) {
 
   const reader = new FileReader();
   reader.onload = (loadEvent) => {
-    editorState.portrait = loadEvent.target?.result || DEFAULT_PORTRAIT;
+    editorState.portrait = loadEvent.target?.result || PLACEHOLDER_PORTRAIT;
     updatePortraitPreview();
   };
   reader.readAsDataURL(file);
@@ -3060,7 +3291,7 @@ function collectFormData(formData) {
     level: Number.parseInt(formData.get('characterLevel'), 10) || 1,
     group: formData.get('characterGroup')?.toString().trim() || '',
     campaign: formData.get('characterCampaign')?.toString().trim() || '',
-    portrait: editorState.portrait || DEFAULT_PORTRAIT,
+    portrait: editorState.portrait || PLACEHOLDER_PORTRAIT,
     stats: {}
   };
 
@@ -3176,8 +3407,7 @@ function wireInteractions() {
   });
   elements.importCharacterInput?.addEventListener('change', handleImportCharacterFile);
   elements.navBack?.addEventListener('click', () => {
-    showScreen('select');
-    updateNavState(null);
+    showSelectScreen();
   });
   elements.navSheet?.addEventListener('click', () => {
     if (!selectedCharacterId && characters[0]) {
@@ -3206,6 +3436,12 @@ function wireInteractions() {
     }
     showNotesScreen();
   });
+  elements.navSettings?.addEventListener('click', () => {
+    showSettingsScreen();
+  });
+  elements.settingsBackButton?.addEventListener('click', () => {
+    restorePreviousScreenFromSettings();
+  });
 
   if (elements.stats) {
     elements.stats.forEach((statElement) => {
@@ -3227,7 +3463,7 @@ function wireInteractions() {
   elements.characterForm?.addEventListener('submit', handleFormSubmit);
   elements.portraitInput?.addEventListener('change', handlePortraitChange);
   elements.clearPortrait?.addEventListener('click', () => {
-    editorState.portrait = DEFAULT_PORTRAIT;
+    editorState.portrait = PLACEHOLDER_PORTRAIT;
     if (elements.portraitInput) {
       elements.portraitInput.value = '';
     }
@@ -3358,8 +3594,7 @@ async function init() {
     renderAbilityLists();
     renderInventoryList();
   } else {
-    showScreen('select');
-    updateNavState(null);
+    showSelectScreen();
     updateAbilityControlsAvailability();
     renderInventoryList();
   }
@@ -3381,6 +3616,8 @@ if (document.readyState === 'loading') {
 } else {
   startApp();
 }
+
+window.addEventListener('load', ensureAppHeaderHeight);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

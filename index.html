@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#060507" />
-  <title>CharSheet Companion</title>
+  <title>Proyecto CoolDown</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
   <link rel="apple-touch-icon" href="assets/icon-maskable.svg" />
@@ -19,10 +19,9 @@
   />
   <link id="mainStylesheet" rel="stylesheet" href="" />
   <script>
-    window.APP_VERSION = Date.now().toString();
-    window.DEFAULT_PORTRAIT =
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAA' +
-      'AAAAAAAAAAAAAAAAAAD4GlrxAAE9eEIAAAAASUVORK5CYII=';
+    window.APP_VERSION = 'v11';
+    window.APP_VERSION_LABEL = window.APP_VERSION;
+    window.DEFAULT_PORTRAIT = 'assets/empty.png';
     const stylesheet = document.getElementById('mainStylesheet');
     if (stylesheet) {
       stylesheet.href = `styles.css?v=${window.APP_VERSION}`;
@@ -146,9 +145,13 @@
     </symbol>
   </svg>
   <div id="app" class="app">
-    <div id="fa-check" style="padding:8px">
-      <i class="fa-solid fa-dragon"></i> CharSheet Companion
-    </div>
+    <header class="app-header hidden">
+      <div class="app-brand">
+        <i class="fa-solid fa-dice-d20 fa-spin" aria-hidden="true"></i>
+        <span class="app-title">Proyecto CoolDown</span>
+      </div>
+      <span class="app-version" data-app-version></span>
+    </header>
     <div class="character-select" data-screen="select">
       <header class="select-header">
         <h1>Selecciona tu Personaje</h1>
@@ -157,13 +160,13 @@
             <svg class="icon icon-user-plus" aria-hidden="true" focusable="false">
               <use href="#icon-user-plus" xlink:href="#icon-user-plus"></use>
             </svg>
-            Crear Personaje
+            Crear PJ
           </button>
           <button class="btn secondary import-btn" type="button" id="importCharacterBtn">
             <svg class="icon icon-upload" aria-hidden="true" focusable="false">
               <use href="#icon-upload" xlink:href="#icon-upload"></use>
             </svg>
-            Importar Personaje
+            Importar PJ
           </button>
           <input
             type="file"
@@ -316,11 +319,25 @@
         </div>
       </div>
     </div>
+    <div class="settings-screen hidden" data-screen="settings">
+      <div class="settings-content">
+        <button type="button" class="btn secondary settings-back" id="settingsBackButton">
+          <svg class="icon icon-arrow-left" aria-hidden="true" focusable="false">
+            <use href="#icon-arrow-left" xlink:href="#icon-arrow-left"></use>
+          </svg>
+          Volver
+        </button>
+        <div class="settings-info">
+          <p>Proyecto CoolDown.</p>
+          <p>Prototipo de app realizada por Mateo Foulkes</p>
+          <p>(con alguito de chatgpt)</p>
+          <p>2025</p>
+        </div>
+      </div>
+    </div>
     <nav class="bottom-bar" aria-label="Menú principal">
       <button type="button" class="nav-button" data-action="back" aria-label="Volver">
-        <svg class="icon icon-arrow-left" aria-hidden="true" focusable="false">
-          <use href="#icon-arrow-left" xlink:href="#icon-arrow-left"></use>
-        </svg>
+        <i class="fa-solid fa-table-list" aria-hidden="true"></i>
         <span class="sr-only">Volver</span>
       </button>
       <button type="button" class="nav-button" data-action="sheet" aria-label="Hoja de personaje">
@@ -743,12 +760,54 @@
 
   <script>
     (function applyDefaultPortraits() {
-      const placeholder = window.DEFAULT_PORTRAIT;
+      const basePlaceholder = window.DEFAULT_PORTRAIT;
+      const version = window.APP_VERSION;
+      const hasPlaceholder = typeof basePlaceholder === 'string' && basePlaceholder.length > 0;
+      if (!hasPlaceholder) {
+        return;
+      }
+      const isDataUri = hasPlaceholder && basePlaceholder.startsWith('data:');
+      const placeholder =
+        hasPlaceholder && !isDataUri && version
+          ? `${basePlaceholder}${basePlaceholder.includes('?') ? '&' : '?'}v=${version}`
+          : basePlaceholder;
+
       document.querySelectorAll('[data-default-portrait]').forEach((img) => {
+        if (img.dataset.portraitFallbackBound !== 'true') {
+          img.dataset.portraitFallbackBound = 'true';
+          img.addEventListener('error', () => {
+            if (img.dataset.usingPortraitFallback === 'true') {
+              return;
+            }
+            img.dataset.usingPortraitFallback = 'true';
+            img.setAttribute('src', placeholder);
+          });
+        }
+
         if (!img.getAttribute('src')) {
+          img.dataset.usingPortraitFallback = 'false';
           img.setAttribute('src', placeholder);
         }
       });
+    })();
+  </script>
+
+  <script>
+    (function displayAppVersion() {
+      const badge = document.querySelector('[data-app-version]');
+      if (!badge) return;
+      const label = window.APP_VERSION_LABEL || window.APP_VERSION;
+      if (!label) {
+        badge.remove();
+        return;
+      }
+      const text = label.toString().trim();
+      if (!text) {
+        badge.remove();
+        return;
+      }
+      badge.textContent = text;
+      badge.setAttribute('title', `Versión ${text}`);
     })();
   </script>
 
