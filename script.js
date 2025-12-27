@@ -3,6 +3,7 @@ const SELECTED_KEY = 'charsheet.selectedId';
 const DB_NAME = 'charsheet-storage';
 const DB_VERSION = 1;
 const DB_STORE_NAME = 'keyvalue';
+const SYNC_CHANNEL_NAME = 'charsheet-sync';
 const DEFAULT_PORTRAIT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAKklEQVR4Ae3BMQEAAADCIPunNsN+YAAAAAAAAAAAAAAAAAAAAAD4GlrxAAE9eEIAAAAASUVORK5CYII=';
 const PLACEHOLDER_PORTRAIT =
@@ -76,6 +77,8 @@ let selectedCharacterId = null;
 let passiveModifierCache = createEmptyModifierData();
 let previousNonSettingsScreen = 'select';
 let appHeaderHeight = null;
+let syncChannel = null;
+let isProcessingExternalSync = false;
 
 function getSelectedCharacter() {
   if (!selectedCharacterId) return null;
@@ -447,6 +450,21 @@ function persistSelectedIdToIndexedDB(id) {
   idbSet(SELECTED_KEY, value).catch((error) => {
     console.warn('No se pudo guardar el personaje seleccionado en la base de datos local:', error);
   });
+}
+
+function broadcastSharedState() {
+  if (!syncChannel || isProcessingExternalSync) return;
+  try {
+    syncChannel.postMessage({
+      type: 'state-sync',
+      payload: {
+        characters,
+        selectedCharacterId
+      }
+    });
+  } catch (error) {
+    console.warn('No se pudo sincronizar con otras pestañas:', error);
+  }
 }
 
 function requestPersistentStorage() {
@@ -998,12 +1016,15 @@ async function loadCharacters() {
   return [];
 }
 
-function saveCharacters(list) {
+function saveCharacters(list, { skipBroadcast = false } = {}) {
   const payload = JSON.stringify(list);
   if (!safeSetItem(STORAGE_KEY, payload)) {
     safeRemoveItem(STORAGE_KEY);
   }
   persistCharactersToIndexedDB(list);
+  if (!skipBroadcast) {
+    broadcastSharedState();
+  }
 }
 
 async function loadSelectedCharacterId() {
@@ -1028,12 +1049,15 @@ async function loadSelectedCharacterId() {
   return null;
 }
 
-function saveSelectedCharacterId(id) {
+function saveSelectedCharacterId(id, { skipBroadcast = false } = {}) {
   const value = id ?? '';
   if (!safeSetItem(SELECTED_KEY, value)) {
     safeRemoveItem(SELECTED_KEY);
   }
   persistSelectedIdToIndexedDB(id);
+  if (!skipBroadcast) {
+    broadcastSharedState();
+  }
 }
 
 function ensureUniqueId(baseId) {
@@ -1067,6 +1091,101 @@ function ensureUniqueInventoryId(list, baseId) {
     suffix += 1;
   }
   return candidate;
+}
+
+function applyExternalCharacterList(list) {
+  const normalized = Array.isArray(list) ? list.map(normalizeCharacter).filter(Boolean) : [];
+
+  isProcessingExternalSync = true;
+  try {
+    characters = normalized;
+    saveCharacters(characters, { skipBroadcast: true });
+  } finally {
+    isProcessingExternalSync = false;
+  }
+
+  if (!characters.some((item) => item.id === selectedCharacterId)) {
+    selectedCharacterId = characters[0]?.id ?? null;
+    saveSelectedCharacterId(selectedCharacterId, { skipBroadcast: true });
+  }
+
+  renderCharacterList();
+
+  if (selectedCharacterId) {
+    showCharacterSheet(selectedCharacterId);
+    renderAbilityLists();
+    renderInventoryList();
+  } else {
+    showSelectScreen();
+    updateAbilityControlsAvailability();
+    renderInventoryList();
+  }
+
+  renderNotesContent();
+}
+
+function applyExternalSelectedId(id) {
+  const normalized = normalizeStoredSelectedId(id);
+  const validSelection = normalized && characters.some((item) => item.id === normalized);
+  const nextId = validSelection ? normalized : characters[0]?.id ?? null;
+
+  if (nextId === selectedCharacterId) {
+    return;
+  }
+
+  selectedCharacterId = nextId;
+  saveSelectedCharacterId(selectedCharacterId, { skipBroadcast: true });
+
+  if (selectedCharacterId) {
+    showCharacterSheet(selectedCharacterId);
+    renderAbilityLists();
+    renderInventoryList();
+  } else {
+    showSelectScreen();
+    updateAbilityControlsAvailability();
+    renderInventoryList();
+  }
+
+  renderNotesContent();
+}
+
+function handleStorageEvent(event) {
+  if (event.storageArea !== window.localStorage) return;
+  if (event.key === STORAGE_KEY) {
+    const parsed = parseStoredCharacters(event.newValue);
+    applyExternalCharacterList(parsed || []);
+    return;
+  }
+  if (event.key === SELECTED_KEY) {
+    applyExternalSelectedId(event.newValue);
+  }
+}
+
+function handleSyncMessage(event) {
+  const data = event?.data;
+  if (!data || data.type !== 'state-sync') return;
+  const payload = data.payload || {};
+
+  if (Array.isArray(payload.characters)) {
+    applyExternalCharacterList(payload.characters);
+  }
+
+  if (payload.selectedCharacterId !== undefined) {
+    applyExternalSelectedId(payload.selectedCharacterId);
+  }
+}
+
+function setupSharedPersistenceSync() {
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      syncChannel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+      syncChannel.addEventListener('message', handleSyncMessage);
+    }
+  } catch (error) {
+    console.warn('No se pudo iniciar la sincronización entre pestañas:', error);
+  }
+
+  window.addEventListener('storage', handleStorageEvent);
 }
 
 function cacheElements() {
@@ -3599,6 +3718,7 @@ async function init() {
   wireInteractions();
   updateActiveAbilityPreview();
   updateInventoryPreview();
+  setupSharedPersistenceSync();
   requestPersistentStorage();
 }
 
